@@ -1,6 +1,6 @@
 from fastapi import FastAPI,status, Path, Query, APIRouter
 from fastapi.responses import PlainTextResponse,JSONResponse
-from src.services.supabase_service import get_proveedores
+from src.services.supabase_service import get_proveedores_supa,get_proveedor_supa
 app = FastAPI()
 
 
@@ -10,13 +10,15 @@ def home():
     return PlainTextResponse(content="hola mundo",status_code=200) 
 
 @app.get("/proveedores",tags=['Proveedor'])
-def get_proveedor():
-    return JSONResponse(content=get_proveedores())
+def get_proveedores():
+    return JSONResponse(content=get_proveedores_supa())
+
+
 @app.get("/proveedores/by_id", tags=["Proveedor"])  # ruta retorna por id
-def get_movie(id: str = Query(max_length=4,min_length=4)) ->  dict:
+def get_proveedor(id: str = Query(max_length=4,min_length=4)) ->  dict:
     
-    if get_proveedores(id):
-        return JSONResponse(content=get_proveedores(id), status_code=200)
+    if get_proveedor_supa(id):
+        return JSONResponse(content=get_proveedor_supa(id), status_code=200)
     return JSONResponse(content={}, status_code=404)
 
 

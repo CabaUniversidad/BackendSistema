@@ -4,12 +4,12 @@ from src.config.settings import SUPABASE_URL, SUPABASE_KEY
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
-def get_proveedores():
+def get_proveedores_supa():
     response = supabase.table("proveedores").select("*").execute()
     return response.data
 
 
-def get_proveedores(id):
+def get_proveedor_supa(id):
     response = (
         supabase.table("proveedores")
         .select("*")
