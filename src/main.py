@@ -20,8 +20,8 @@ def get_proveedor(id: str = Query(max_length=4,min_length=4)) ->  dict:
     if get_proveedor_supa(id):
         return JSONResponse(content=get_proveedor_supa(id), status_code=200)
     return JSONResponse(content={}, status_code=404)
-#----------productos -para CategoriaProveedor------
-@app.get("/productos/by_id", tags=["Producto"])  # ruta retorna por id
+#----------productos De Proveedores-- -para CategoriaProveedor------
+@app.get("/proveedor/productos/by_id", tags=["Proveedor"])  # ruta retorna por id
 def get_producto(id: str = Query(max_length=4,min_length=4)) ->  dict:
     
     if get_Producto_categoriaproveedor_supa(id):
