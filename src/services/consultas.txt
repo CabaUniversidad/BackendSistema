@@ -1,0 +1,11 @@
+def buscar_productos_por_nombre(palabra_clave):
+    response = (
+        supabase.table("productos")
+        .select("*")
+        .ilike("nombre_producto", f"%{palabra_clave}%")  # búsqueda parcial
+        .execute()
+    )
+    return response.data
+
+
+
