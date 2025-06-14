@@ -4,16 +4,37 @@ from src.config.settings import SUPABASE_URL, SUPABASE_KEY
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
-def get_proveedores():
+def get_proveedores_service():
     response = supabase.table("proveedores").select("*").execute()
     return response.data
 
 
-def get_proveedores(id):
-    response = (
-        supabase.table("proveedores")
-        .select("*")
-        .eq("idproveedor", id) 
+def get_proveedor_service(id):
+    response = supabase.table("proveedores").select("*").eq("idproveedor", id).execute()
+    return response.data
+
+
+def get_producto_proveedor_service(idproveedor: str):
+    # Obtener todos los productos relacionados a un proveedor desde categoriaproveedor
+    productos_ids_response = (
+        supabase.from_("categoriaproveedor")
+        .select("id_producto")
+        .eq("idproveedor", idproveedor)
         .execute()
     )
-    return response.data
+
+    # Extraer solo la lista de IDs
+    productos_ids = [p["id_producto"] for p in productos_ids_response.data]
+
+    if not productos_ids:
+        return []
+
+    # Buscar los productos que estén en esa lista
+    productos_response = (
+        supabase.from_("productos_con_categoria")
+        .select("*")
+        .in_("id_producto", productos_ids)
+        .execute()
+    )
+
+    return productos_response.data
