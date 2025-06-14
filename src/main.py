@@ -1,6 +1,7 @@
 from fastapi import FastAPI,status, Path, Query, APIRouter
 from fastapi.responses import PlainTextResponse,JSONResponse
-from src.services.supabase_service import get_proveedores_service,get_proveedor_service,get_producto_proveedor_service
+from supabase_service import get_proveedores_service,get_proveedor_service,get_producto_proveedor_service
+
 app = FastAPI()
 
 
