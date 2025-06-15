@@ -8,4 +8,7 @@ def buscar_productos_por_nombre(palabra_clave):
     return response.data
 
 
+    
+# uvicorn src.main:app --reload
+
 
