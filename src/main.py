@@ -1,6 +1,7 @@
-from fastapi import FastAPI,status, Path, Query, APIRouter
+from fastapi import FastAPI,status, Path, Query, APIRouter,HTTPException
 from fastapi.responses import PlainTextResponse,JSONResponse
-from src.services.supabase_service import get_proveedores_service,get_proveedor_service,get_producto_proveedor_service
+from src.model.EmpleadoEditarRequest import EmpleadoEditarRequest
+from src.services.supabase_service import get_proveedores_service,get_proveedor_service,get_producto_proveedor_service,get_usuarios_service,editar_empleado_service
 
 app = FastAPI()
 
@@ -24,4 +25,20 @@ def get_productos_proveedor(id: str = Query(..., max_length=4, min_length=4)) ->
     if productos:
         return JSONResponse(content=productos, status_code=200)
     return JSONResponse(content={"message": "No se encontraron productos para ese proveedor."}, status_code=404)
-
+#------------empleado-------------
+@app.get("/empleados", tags=["Empleado"]) # retorna todos lo productos de un proveedor segun su ipPROVEEDOR
+def get_usuarios() -> JSONResponse:
+    usuario = get_usuarios_service()
+    if usuario:
+        return JSONResponse(content=usuario, status_code=200)
+    return JSONResponse(content={"message": "No se encontraron usuarios."}, status_code=404)
+@app.put("/empleados/{cod_empleado}", tags=["Empleado"])
+def editar_empleado(cod_empleado: str, request: EmpleadoEditarRequest):
+    try:
+        data = request.dict()
+        data["CodEmpleado"] = cod_empleado
+        result = editar_empleado_service(data)
+        return JSONResponse(content=result, status_code=200)
+    except Exception as e:
+        print("ERROR al editar empleado:", str(e))  # Para debug en consola
+        raise HTTPException(status_code=400, detail=str(e))

@@ -38,3 +38,23 @@ def get_producto_proveedor_service(idproveedor: str):
     )
 
     return productos_response.data
+#---------------ususarios-------------
+
+def get_usuarios_service():
+    response = supabase.rpc("obtener_usuarios_completos").execute()
+    return response.data
+def editar_empleado_service(data: dict):
+    response = supabase.rpc("editar_empleado", {
+        "p_cod_empleado": data["CodEmpleado"],
+        "p_nombres": data["Nombres"],
+        "p_apellidos": data["Apellidos"],
+        "p_usuario": data["Usuario"],
+        "p_password": data["Password"],
+        "p_estado_nombre": data["Estado"],
+        "p_telefono": data["Telefono"],
+        "p_email": data["Email"],
+        "p_rol_nombre": data["Rol"]
+    }).execute()
+
+    # Si la ejecución no lanza error, asumimos que se actualizó bien
+    return {"message": "Empleado actualizado correctamente"}
