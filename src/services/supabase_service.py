@@ -9,6 +9,7 @@ def get_proveedores_service():
     return response.data
 
 
+
 def get_proveedor_service(id):
     response = supabase.table("proveedores").select("*").eq("idproveedor", id).execute()
     return response.data
@@ -38,6 +39,10 @@ def get_producto_proveedor_service(idproveedor: str):
     )
 
     return productos_response.data
+#--------rol--------
+def get_rol_service():
+    response = supabase.table("rol").select("nomrol").execute()
+    return response.data
 #---------------ususarios-------------
 
 def get_usuarios_service():

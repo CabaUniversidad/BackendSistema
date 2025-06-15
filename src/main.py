@@ -1,7 +1,7 @@
 from fastapi import FastAPI,status, Path, Query, APIRouter,HTTPException
 from fastapi.responses import PlainTextResponse,JSONResponse
 from src.model.EmpleadoEditarRequest import EmpleadoEditarRequest
-from src.services.supabase_service import get_proveedores_service,get_proveedor_service,get_producto_proveedor_service,get_usuarios_service,editar_empleado_service
+from src.services.supabase_service import get_proveedores_service,get_proveedor_service,get_producto_proveedor_service,get_usuarios_service,editar_empleado_service,get_rol_service
 
 app = FastAPI()
 
@@ -25,6 +25,10 @@ def get_productos_proveedor(id: str = Query(..., max_length=4, min_length=4)) ->
     if productos:
         return JSONResponse(content=productos, status_code=200)
     return JSONResponse(content={"message": "No se encontraron productos para ese proveedor."}, status_code=404)
+#----------rol----------------
+@app.get("/rol",tags=['Rol'])
+def get_rol():
+    return JSONResponse(content=get_rol_service())
 #------------empleado-------------
 @app.get("/empleados", tags=["Empleado"]) # retorna todos lo productos de un proveedor segun su ipPROVEEDOR
 def get_usuarios() -> JSONResponse:
