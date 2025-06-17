@@ -1,7 +1,7 @@
 from fastapi import FastAPI,status, Path, Query, APIRouter,HTTPException
 from fastapi.responses import PlainTextResponse,JSONResponse
 from src.model.EmpleadoEditarRequest import EmpleadoEditarRequest
-from src.services.supabase_service import get_proveedores_service,get_proveedor_service,get_producto_proveedor_service,get_usuarios_service,editar_empleado_service,get_categorias_service,get_productos_por_categoria_service,get_productos_service,get_rols_service,get_estado_empleado_service
+from src.services.supabase_service import get_proveedores_service,get_proveedor_service,get_producto_proveedor_service,get_usuarios_service,editar_empleado_service,get_categorias_service,get_productos_por_categoria_service,get_productos_service,get_rols_service,get_estado_empleado_service,get_producto_por_codbarras_service
 
 app = FastAPI()
 
@@ -26,7 +26,12 @@ def get_productos_por_categoria(id: int = Query(...)) -> JSONResponse:
 def get_Productos():
     return JSONResponse(content=get_productos_service())
 
-
+@app.get("/productos/by_codbarras", tags=["Producto"])
+def get_producto_por_codbarras(codbarras: int = Query(...)) -> JSONResponse:
+    producto = get_producto_por_codbarras_service(codbarras)
+    if producto:
+        return JSONResponse(content=producto, status_code=200)
+    return JSONResponse(content={"message": "Producto no encontrado."}, status_code=404)
 
 
 

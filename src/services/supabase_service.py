@@ -65,3 +65,6 @@ def get_categorias_service():
 def get_productos_por_categoria_service(idcategoria: int):
     response = supabase.rpc("get_productos_por_categoria", {"categoria_id": idcategoria}).execute()
     return response.data or []
+def get_producto_por_codbarras_service(codbarras: int):
+    response = supabase.rpc("get_producto_por_codbarras", {"p_codbarras": codbarras}).execute()
+    return response.data or []
