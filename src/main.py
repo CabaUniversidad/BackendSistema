@@ -2,7 +2,8 @@ from fastapi import FastAPI,status, Path, Query, APIRouter,HTTPException
 from fastapi.responses import PlainTextResponse,JSONResponse
 from src.model.EmpleadoEditarRequest import EmpleadoEditarRequest
 from src.model.Proveedor import Proveedor
-from src.services.supabase_service import get_proveedores_service,get_proveedor_service,get_producto_proveedor_service,get_usuarios_service,editar_empleado_service,get_categorias_service,get_productos_por_categoria_service,get_productos_service,get_rols_service,get_estado_empleado_service,get_producto_por_codbarras_service,add_proveedor_service,update_proveedor_service
+from src.model.LoginRequest import LoginRequest
+from src.services.supabase_service import get_proveedores_service,get_proveedor_service,get_producto_proveedor_service,get_usuarios_service,editar_empleado_service,get_categorias_service,get_productos_por_categoria_service,get_productos_service,get_rols_service,get_estado_empleado_service,get_producto_por_codbarras_service,add_proveedor_service,update_proveedor_service,login_empleado_service
 
 app = FastAPI()
 
@@ -72,6 +73,18 @@ def actualizar_proveedor(idproveedor: str, proveedor: Proveedor):
         return JSONResponse(content=update_proveedor_service(idproveedor, proveedor.dict()))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+#----------login-------------------
+@app.post("/login", tags=["Empleado"])
+def login_empleado(request: LoginRequest):
+    empleado = login_empleado_service(request.usuario, request.password)
+    if empleado:
+        return JSONResponse(content={
+            "success": empleado[0]["es_admin"],
+            "data": empleado[0]
+        }, status_code=200)
+    raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
 
 
 

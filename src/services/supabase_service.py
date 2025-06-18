@@ -69,6 +69,22 @@ def get_estado_empleado_service():
     response = supabase.table("estadoemp").select("*").execute()
     return response.data
 
+
+
+#--------login-------------------
+def login_empleado_service(usuario: str, password: str):
+    response = supabase.rpc("login_empleado", {
+        "p_usuario": usuario,
+        "p_password": password
+    }).execute()
+
+    # Solo verificamos si response.data existe y tiene algo
+    if not response.data:
+        return None
+
+    return response.data
+
+
 #----------productos---
 def get_productos_service():
     response = supabase.rpc("get_productos_categoria").execute()
