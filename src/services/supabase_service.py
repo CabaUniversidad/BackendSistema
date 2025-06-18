@@ -20,7 +20,22 @@ def get_producto_proveedor_service(idproveedor: str):
         return []
 
     return response.data
+def add_proveedor_service(data: dict):
+    try:
+        response = supabase.table("proveedor").insert(data).execute()
+        return response.data  # ✅ forma correcta
+    except Exception as e:
+        raise Exception(f"Error al insertar proveedor: {e}")
 
+
+
+
+def update_proveedor_service(idproveedor: str, data: dict):
+    try:
+        response = supabase.table("proveedor").update(data).eq("idproveedor", idproveedor).execute()
+        return response.data
+    except Exception as e:
+        raise Exception(f"Error al actualizar proveedor: {e}")
 #---------------ususarios-------------
 
 def get_usuarios_service():

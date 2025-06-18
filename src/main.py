@@ -1,7 +1,8 @@
 from fastapi import FastAPI,status, Path, Query, APIRouter,HTTPException
 from fastapi.responses import PlainTextResponse,JSONResponse
 from src.model.EmpleadoEditarRequest import EmpleadoEditarRequest
-from src.services.supabase_service import get_proveedores_service,get_proveedor_service,get_producto_proveedor_service,get_usuarios_service,editar_empleado_service,get_categorias_service,get_productos_por_categoria_service,get_productos_service,get_rols_service,get_estado_empleado_service,get_producto_por_codbarras_service
+from src.model.Proveedor import Proveedor
+from src.services.supabase_service import get_proveedores_service,get_proveedor_service,get_producto_proveedor_service,get_usuarios_service,editar_empleado_service,get_categorias_service,get_productos_por_categoria_service,get_productos_service,get_rols_service,get_estado_empleado_service,get_producto_por_codbarras_service,add_proveedor_service,update_proveedor_service
 
 app = FastAPI()
 
@@ -57,7 +58,20 @@ def get_productos_proveedor(id: str = Query(..., max_length=7, min_length=7)) ->
         return JSONResponse(content=productos, status_code=200)
     return JSONResponse(content={"message": "No se encontraron productos para ese proveedor."}, status_code=404)
 
+@app.post("/proveedores", tags=["Proveedor"])
+def crear_proveedor(proveedor: Proveedor):
+    try:
+        return JSONResponse(content=add_proveedor_service(proveedor.dict()))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
+
+@app.put("/proveedores/{idproveedor}", tags=["Proveedor"])
+def actualizar_proveedor(idproveedor: str, proveedor: Proveedor):
+    try:
+        return JSONResponse(content=update_proveedor_service(idproveedor, proveedor.dict()))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 
