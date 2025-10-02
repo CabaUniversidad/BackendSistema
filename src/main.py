@@ -7,20 +7,23 @@ app = FastAPI(
     description="Una API básica para registrar y listar usuarios.",
     version="1.0.0"
 )
+usuarioClass=usuario_servicio
+usuarioActual=0
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
     await ws.accept()
-    contador = 0
     while True:
-        contador += 1
-        await ws.send_text(f"Mensaje {contador}")  # mando texto
-        await asyncio.sleep(3)  # espero 3 segundos
-
+        if usuarioActual!=len(usuarioClass.usuarios):
+            usuarioActual=len(usuarioClass.usuarios) 
+            
+            await ws.send_text(usuarioClass.usuarios[usuarioActual-1]) 
+            await asyncio.sleep(2) 
+            
 
 
 @app.post("/usuarios", response_model=Usuario)
 def crear_usuario(usuario: Usuario):
-    return usuario_servicio.crear_usuario(usuario)
+    return usuarioClass.crear_usuario(usuario)
 
 @app.get("/usuarios", response_model=list[Usuario])
 def listar_usuarios():
