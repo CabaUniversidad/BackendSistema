@@ -1,12 +1,22 @@
-from fastapi import FastAPI 
+from fastapi import FastAPI ,WebSocket
 from src.model.usuario_modelo import Usuario
 from src.services import usuario_servicio
-
+import asyncio
 app = FastAPI(
     title="API de Usuarios",
     description="Una API básica para registrar y listar usuarios.",
     version="1.0.0"
 )
+@app.websocket("/ws")
+async def ws_endpoint(ws: WebSocket):
+    await ws.accept()
+    contador = 0
+    while True:
+        contador += 1
+        await ws.send_text(f"Mensaje {contador}")  # mando texto
+        await asyncio.sleep(3)  # espero 3 segundos
+
+
 
 @app.post("/usuarios", response_model=Usuario)
 def crear_usuario(usuario: Usuario):
