@@ -24,3 +24,63 @@ jobs:
 
       - name: Subir imagen a DockerHub
         run: docker push ${{ secrets.DOCKER_USER }}/backend_fastapi:latest
+  deploy:
+    needs: construir-y-publicar
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout del codigo (obtener el docker-compose.yml, setup_vm.sh)
+        uses: actions/checkout@v5
+
+      #1 configurar acceso ssh
+      - name: configurar agente ssh
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      #2 copiar el script de configuracion a la vm
+      - name: copiar script de configuracion a la vm
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "setup_vm.sh"
+          target: "~/temp/"
+      #3 ejecutar el script de configuracion en la vm
+      - name: ejecutar script de instalacion de docker en la vm
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script_stop: true
+          script: |
+            cd ~/temp
+            chmod +x setup_vm.sh
+            ./setup_vm.sh ${{ secrets.DOCKER_USER }}
+            rm setup_vm.sh  # eliminar el script despues de usarlo
+      #4 copiar el docker-compose a la vm
+      - name: copiar docker-compose a la vm
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.yml"
+          target: "~/home/${{ secrets.SSH_USER }}/deploy/"
+      #5 ejecutar docker-compose en la vm
+      - name: ejecutar docker-compose en la vm
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script_stop: true
+          script: |
+            DEPLOY_PATH=/home/${{ secrets.SSH_USER }}/deploy
+            cd $DEPLOY_PATH
+            #DESCARGAR LA IMAGEN DE DOCKER HUB
+            echo ${{secrets.DOCKER_PASSWORD}} | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin
+            sudo docker pull 
+            sudo docker-compose up -d --force-recreate
+            sudo docker logout
