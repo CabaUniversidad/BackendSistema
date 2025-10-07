@@ -17,8 +17,10 @@ sudo usermod -aG docker $USER_TO_ADD
 echo "--- 3. Configurando Firewall Interno (UFW en Puerto 80) ---"
 # Instala e inicializa UFW si no está activo
 sudo apt install -y ufw
-# Abre el puerto 80 (HTTP)
+# Abre el puerto 80 (HTTP) y 8000 (FastAPI)
 sudo ufw allow 80/tcp
+sudo ufw allow 8000/tcp
+
 # Habilita el firewall (si no está activo)
 sudo ufw enable -y 
 sudo ufw status verbose
