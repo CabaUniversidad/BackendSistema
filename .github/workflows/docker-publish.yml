@@ -96,10 +96,9 @@ jobs:
             docker logout
 
 
-  # ... (El job 'build-and-push' y las dependencias de 'notify-on-completion' son las mismas)
 
   notify-on-completion:
-    needs: build-and-push
+    needs: construir-y-publicar
     runs-on: ubuntu-latest
     if: always() 
 
