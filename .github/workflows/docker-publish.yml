@@ -82,12 +82,16 @@ jobs:
           script_stop: true
           script: |
             DEPLOY_PATH=/home/${{ secrets.SSH_USER }}/deploy
-            chmod +x deploy.sh
+            cd $DEPLOY_PATH
             
+            chmod +x deploy.sh 
+            
+            # Ejecutar el script, pasando SSH_USER, DOCKER_PASSWORD y DOCKER_USER
             ./deploy.sh \
               ${{ secrets.SSH_USER }} \
               "${{ secrets.DOCKER_PASSWORD }}" \
               ${{ secrets.DOCKER_USER }}
+            rm deploy.sh
 
   notificar-al-finalizar: # Nombre del trabajo cambiado a español y dependencia ajustada
     needs: [construir-y-publicar, desplegar] # ¡CORRECCIÓN CLAVE! Ahora espera a que 'desplegar' termine
