@@ -95,3 +95,59 @@ jobs:
 
             docker logout
 
+
+  # ... (El job 'build-and-push' y las dependencias de 'notify-on-completion' son las mismas)
+
+  notify-on-completion:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: always() 
+
+    steps:
+      - name: Determinar el Estado de la Pipeline
+        id: check
+        run: |
+          # Lógica para determinar el estado, similar a los ejemplos anteriores
+          JOB_STATUS="${{ needs.build-and-push.result }}"
+          if [ "$JOB_STATUS" == "success" ]; then
+            STATUS_EMOJI="✅ Éxito"
+            COLOR="#22863a"
+          else
+            STATUS_EMOJI="🚨 Fallo"
+            COLOR="#cf222e"
+          fi
+          
+          # Establece las variables de entorno para usar en el mensaje
+          echo "STATUS_EMOJI=$STATUS_EMOJI" >> $GITHUB_ENV
+          
+      - name: Enviar Correo de Notificación (Usando Google Apps Script Webhook)
+        run: |
+          # 1. Definir el cuerpo HTML del correo
+          HTML_BODY=$(cat <<EOF
+            <html>
+              <head>
+                <style>
+                  .status-box { background-color: ${{ env.COLOR }}; color: white; padding: 10px; border-radius: 5px; font-weight: bold; }
+                </style>
+              </head>
+              <body>
+                <p>Hola,</p>
+                <p>La pipeline de Docker para <b>${{ github.repository }}</b> ha terminado.</p>
+                <div class="status-box">ESTADO: ${{ env.STATUS_EMOJI }}</div>
+                <p>Revisa la ejecución completa aquí: <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">${{ github.run_id }}</a></p>
+                <p>Saludos desde GitHub Actions.</p>
+              </body>
+            </html>EOF
+          )
+
+          # 2. Construir el payload JSON para el Webhook
+          JSON_PAYLOAD=$(cat <<EOF{
+          "to": "destinatario.requerido@tuempresa.com", 
+          "subject": "[${{ env.STATUS_EMOJI }}] Notificación de Docker: ${{ github.repository }}",
+          "body": "$HTML_BODY"}EOF)
+          
+          # 3. Enviar la petición POST al Webhook
+          curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d "$JSON_PAYLOAD" \
+            "${{ secrets.GMAIL_APP_SCRIPT_URL }}"
