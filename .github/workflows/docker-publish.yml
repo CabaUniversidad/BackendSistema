@@ -111,7 +111,7 @@ jobs:
           password: ${{ secrets.MAIL_PASSWORD }}
           
           # Destinatario y Remitente
-          to: 'el.destinatario@gmail.com' # El correo que debe recibir la notificación
+          to: 'abdelpre18@gmail.com' # El correo que debe recibir la notificación
           from: ${{ secrets.MAIL_USERNAME }} # Opcional: Para que el remitente sea tu mismo Gmail
           
           # Asunto del correo
