@@ -8,7 +8,6 @@ on:
 jobs:
   construir-y-publicar:
     runs-on: ubuntu-latest
-
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v3
@@ -25,10 +24,9 @@ jobs:
       - name: Subir imagen a DockerHub
         run: docker push ${{ secrets.DOCKER_USER }}/backend_fastapi:latest
 
-  deploy:
+  desplegar: # Nombre cambiado a 'desplegar' para consistencia
     needs: construir-y-publicar
     runs-on: ubuntu-latest
-
     steps:
       # 1️⃣ Descargar repositorio (para obtener docker-compose.yml y setup_vm.sh)
       - name: Descargar repositorio
@@ -50,7 +48,7 @@ jobs:
           source: "setup_vm.sh"
           target: "/home/${{ secrets.SSH_USER }}/temp/"
 
-      # 4️⃣ Ejecutar script de configuración en la VM
+      # 4️⃣ Ejecutar script de instalación de Docker en la VM
       - name: Ejecutar script de instalación de Docker en la VM
         uses: appleboy/ssh-action@master
         with:
@@ -95,29 +93,37 @@ jobs:
 
             docker logout
 
-
-
-  notify-on-completion:
-    needs: construir-y-publicar
+  notificar-al-finalizar: # Nombre del trabajo cambiado a español y dependencia ajustada
+    needs: [construir-y-publicar, desplegar] # ¡CORRECCIÓN CLAVE! Ahora espera a que 'desplegar' termine
     runs-on: ubuntu-latest
-    if: always() 
+    if: always() # Asegura que se ejecute incluso si un trabajo falla
 
     steps:
       - name: Determinar el Estado de la Pipeline
         id: check
         run: |
-          # Lógica para determinar el estado, similar a los ejemplos anteriores
-          JOB_STATUS="${{ needs.build-and-push.result }}"
+          # Obtenemos el resultado final de la dependencia directa más crítica (el despliegue)
+          # NOTA: Necesitas cambiar esto si quieres ver el resultado de 'desplegar'. 
+          # GitHub Actions no tiene un "resultado general" simple.
+          # Lo dejaremos en 'success' ya que el 'if: always()' asegura que notifique de cualquier manera.
+          # Para una lógica de notificación más robusta, se usaría `github.event.workflow_run.conclusion`.
+
+          # Si quieres que la notificación refleje el estado de DESPLEGAR:
+          JOB_STATUS="${{ needs.desplegar.result }}" 
+          
           if [ "$JOB_STATUS" == "success" ]; then
             STATUS_EMOJI="✅ Éxito"
             COLOR="#22863a"
-          else
-            STATUS_EMOJI="🚨 Fallo"
+          elif [ "$JOB_STATUS" == "failure" ]; then
+            STATUS_EMOJI="🚨 Fallo en Despliegue"
             COLOR="#cf222e"
+          else
+            STATUS_EMOJI="⚠️ Estado Desconocido"
+            COLOR="#ff8000"
           fi
           
-          # Establece las variables de entorno para usar en el mensaje
           echo "STATUS_EMOJI=$STATUS_EMOJI" >> $GITHUB_ENV
+          echo "COLOR=$COLOR" >> $GITHUB_ENV
           
       - name: Enviar Correo de Notificación (Usando Google Apps Script Webhook)
         run: |
@@ -131,7 +137,7 @@ jobs:
               </head>
               <body>
                 <p>Hola,</p>
-                <p>La pipeline de Docker para <b>${{ github.repository }}</b> ha terminado.</p>
+                <p>La pipeline de CI/CD para <b>${{ github.repository }}</b> ha finalizado.</p>
                 <div class="status-box">ESTADO: ${{ env.STATUS_EMOJI }}</div>
                 <p>Revisa la ejecución completa aquí: <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">${{ github.run_id }}</a></p>
                 <p>Saludos desde GitHub Actions.</p>
@@ -140,10 +146,13 @@ jobs:
           )
 
           # 2. Construir el payload JSON para el Webhook
-          JSON_PAYLOAD=$(cat <<EOF{
-          "to": "destinatario.requerido@tuempresa.com", 
-          "subject": "[${{ env.STATUS_EMOJI }}] Notificación de Docker: ${{ github.repository }}",
-          "body": "$HTML_BODY"}EOF)
+          JSON_PAYLOAD=$(cat <<EOF
+          {
+                    "to": "destinatario.requerido@tuempresa.com", 
+                    "subject": "[${{ env.STATUS_EMOJI }}] Notificación de CI/CD: ${{ github.repository }}",
+                    "body": "$HTML_BODY"
+          }
+          EOF)
           
           # 3. Enviar la petición POST al Webhook
           curl -s -X POST \
