@@ -24,11 +24,11 @@ jobs:
       - name: Subir imagen a DockerHub
         run: docker push ${{ secrets.DOCKER_USER }}/backend_fastapi:latest
 
-  desplegar: # Nombre cambiado a 'desplegar' para consistencia
+  desplegar:
     needs: construir-y-publicar
     runs-on: ubuntu-latest
     steps:
-      # 1️⃣ Descargar repositorio (para obtener docker-compose.yml y setup_vm.sh)
+      # 1️⃣ Descargar repositorio 
       - name: Descargar repositorio
         uses: actions/checkout@v3
 
@@ -38,7 +38,7 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      # 3️⃣ Copiar script de configuración a la VM
+      # 3️⃣ Copiar script de configuración (setup_vm.sh) a la VM
       - name: Copiar script de configuración a la VM
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -55,35 +55,37 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script_stop: true
+          # ❌ script_stop: true (Eliminado en este paso, era redundante aquí)
           script: |
             cd ~/temp
             chmod +x setup_vm.sh
             ./setup_vm.sh ${{ secrets.SSH_USER }}
             rm setup_vm.sh
 
-      # 5️⃣ Copiar docker-compose.yml a la VM
-      - name: Copiar docker-compose.yml a la VM
+      # 5️⃣ Copiar archivos de despliegue a la VM (CORREGIDO)
+      - name: Copiar docker-compose.yml y deploy.sh a la VM
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "docker-compose.yml"
+          # ✅ CORRECCIÓN CLAVE: Copiando ambos scripts
+          source: "docker-compose.yml,deploy.sh"
           target: "/home/${{ secrets.SSH_USER }}/deploy/"
 
-      # 6️⃣ Levantar contenedor FastAPI en la VM
-      - name: Levantar contenedor FastAPI
+      # 6️⃣ Ejecutar el script de despliegue en la VM (CORREGIDO)
+      - name: Ejecutar script de despliegue
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script_stop: true
+          # ❌ ELIMINADO: Ya no usamos 'script_stop: true' (quita el warning)
           script: |
             DEPLOY_PATH=/home/${{ secrets.SSH_USER }}/deploy
             cd $DEPLOY_PATH
             
+            # Asegurar permisos de ejecución para el script recién copiado
             chmod +x deploy.sh 
             
             # Ejecutar el script, pasando SSH_USER, DOCKER_PASSWORD y DOCKER_USER
@@ -91,7 +93,6 @@ jobs:
               ${{ secrets.SSH_USER }} \
               "${{ secrets.DOCKER_PASSWORD }}" \
               ${{ secrets.DOCKER_USER }}
-            rm deploy.sh
 
   notificar-al-finalizar: # Nombre del trabajo cambiado a español y dependencia ajustada
     needs: [construir-y-publicar, desplegar] # ¡CORRECCIÓN CLAVE! Ahora espera a que 'desplegar' termine
