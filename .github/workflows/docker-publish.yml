@@ -129,33 +129,35 @@ jobs:
         run: |
           # 1. Definir el cuerpo HTML del correo
           HTML_BODY=$(cat <<EOF
-            <html>
-              <head>
-                <style>
-                  .status-box { background-color: ${{ env.COLOR }}; color: white; padding: 10px; border-radius: 5px; font-weight: bold; }
-                </style>
-              </head>
-              <body>
-                <p>Hola,</p>
-                <p>La pipeline de CI/CD para <b>${{ github.repository }}</b> ha finalizado.</p>
-                <div class="status-box">ESTADO: ${{ env.STATUS_EMOJI }}</div>
-                <p>Revisa la ejecución completa aquí: <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">${{ github.run_id }}</a></p>
-                <p>Saludos desde GitHub Actions.</p>
-              </body>
-            </html>EOF
+          <html>
+            <head>
+              <style>
+                .status-box { background-color: ${{ env.COLOR }}; color: white; padding: 10px; border-radius: 5px; font-weight: bold; }
+              </style>
+            </head>
+            <body>
+              <p>Hola,</p>
+              <p>La pipeline de CI/CD para <b>${{ github.repository }}</b> ha finalizado.</p>
+              <div class="status-box">ESTADO: ${{ env.STATUS_EMOJI }}</div>
+              <p>Revisa la ejecución completa aquí: <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">${{ github.run_id }}</a></p>
+              <p>Saludos desde GitHub Actions.</p>
+            </body>
+          </html>
+          EOF
           )
-
-          # 2. Construir el payload JSON para el Webhook
-          JSON_PAYLOAD=$(cat <<EOF
+                    
+                    # 2. Construir el payload JSON para el Webhook
+                    JSON_PAYLOAD=$(cat <<EOF
           {
-                    "to": "destinatario.requerido@tuempresa.com", 
-                    "subject": "[${{ env.STATUS_EMOJI }}] Notificación de CI/CD: ${{ github.repository }}",
-                    "body": "$HTML_BODY"
+            "to": "destinatario.requerido@tuempresa.com", 
+            "subject": "[${{ env.STATUS_EMOJI }}] Notificación de CI/CD: ${{ github.repository }}",
+            "body": "$HTML_BODY"
           }
-          EOF)
-          
-          # 3. Enviar la petición POST al Webhook
-          curl -s -X POST \
-            -H "Content-Type: application/json" \
-            -d "$JSON_PAYLOAD" \
-            "${{ secrets.GMAIL_APP_SCRIPT_URL }}"
+          EOF
+          )
+                    
+                    # 3. Enviar la petición POST al Webhook
+                    curl -s -X POST \
+                      -H "Content-Type: application/json" \
+                      -d "$JSON_PAYLOAD" \
+                      "${{ secrets.GMAIL_APP_SCRIPT_URL }}"
