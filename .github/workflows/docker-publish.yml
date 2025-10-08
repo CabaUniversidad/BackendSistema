@@ -82,16 +82,12 @@ jobs:
           script_stop: true
           script: |
             DEPLOY_PATH=/home/${{ secrets.SSH_USER }}/deploy
-            cd $DEPLOY_PATH
-
-            # Login a Docker Hub y descargar la imagen
-            echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin
-            docker pull ${{ secrets.DOCKER_USER }}/backend_fastapi:latest
-
-            # Levantar contenedor con docker-compose
-            docker-compose up -d --force-recreate
-
-            docker logout
+            chmod +x deploy.sh
+            
+            ./deploy.sh \
+              ${{ secrets.SSH_USER }} \
+              "${{ secrets.DOCKER_PASSWORD }}" \
+              ${{ secrets.DOCKER_USER }}
 
   notificar-al-finalizar: # Nombre del trabajo cambiado a español y dependencia ajustada
     needs: [construir-y-publicar, desplegar] # ¡CORRECCIÓN CLAVE! Ahora espera a que 'desplegar' termine
@@ -127,6 +123,4 @@ jobs:
             - Commit: ${{ github.sha }}
             - Estatus: **${{ job.status }}**
             - Enlace al log: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            
-          # Condición importante: Se ejecutará siempre, sea éxito o fallo
           if: always() 
