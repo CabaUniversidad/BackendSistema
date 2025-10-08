@@ -160,4 +160,4 @@ jobs:
                     curl -s -X POST \
                       -H "Content-Type: application/json" \
                       -d "$JSON_PAYLOAD" \
-                      "${{ secrets.GMAIL_APP_SCRIPT_URL }}"
+                      "${{ secrets.GMAIL_APP_SCRIPT_URL }}" # URL del Google Apps Script
