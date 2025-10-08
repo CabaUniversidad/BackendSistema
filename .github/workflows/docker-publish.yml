@@ -137,7 +137,7 @@ jobs:
             </head>
             <body>
               <p>Hola,</p>
-              <p>La pipeline de CI/CD para <b>${{ github.repository }}</b> ha finalizado.</p>
+              <p>La pipeline de CI/CD para <b>${{ github.repository }}</b> ha finalizado El proceso de deploy.</p>
               <div class="status-box">ESTADO: ${{ env.STATUS_EMOJI }}</div>
               <p>Revisa la ejecución completa aquí: <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">${{ github.run_id }}</a></p>
               <p>Saludos desde GitHub Actions.</p>
