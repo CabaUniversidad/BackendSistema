@@ -149,7 +149,7 @@ jobs:
                     # 2. Construir el payload JSON para el Webhook
                     JSON_PAYLOAD=$(cat <<EOF
           {
-            "to": "destinatario.requerido@tuempresa.com", 
+            "to": "abdelpre18@gmail.com", 
             "subject": "[${{ env.STATUS_EMOJI }}] Notificación de CI/CD: ${{ github.repository }}",
             "body": "$HTML_BODY"
           }
