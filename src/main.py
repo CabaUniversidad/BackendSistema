@@ -1,11 +1,26 @@
 # src/main.py
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
 from datetime import datetime
 from src.model.usuario_modelo import Usuario
 from src.services.usuario_servicio import crear_usuario, obtener_usuarios, obtener_usuario_por_id, actualizar_usuario, eliminar_usuario
 
 app = FastAPI()
+origins = [
+    "http://localhost:8550", # Para pruebas locales de Flet
+    "http://64.181.166.239", # El origen de tu Flet desplegado (si usa el puerto 80)
+    "http://64.181.166.239:8550", # Si Flet se accede por el puerto 8550
+    # Opcional, pero no seguro en Prod: "*"
+]
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],  # Permite GET, POST, PUT, DELETE, etc.
+    allow_headers=["*"],
+)
 @app.post("/usuarios")
 def crear_usuario_nuevo(usuario: Usuario):
     usuario.fecha_registro = datetime.now()
