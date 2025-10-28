@@ -1,0 +1,176 @@
+# Archivo: .github/workflows/deploy.yml
+name: Despliegue Completo OCI con Terraform
+
+on:
+  push:
+    branches:
+      - dev # Cambiamos de 'main' a 'dev' para el desarrollo de esta característica
+
+env:
+  VM_SSH_USER: ubuntu 
+  TERRAFORM_DIR: Terraforms
+  
+jobs:
+  
+  # Job 1: Build y Empaquetado de la Solución en Docker
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout del Código
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Configurar QEMU y Buildx
+        uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: 🔑 Login a DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }} # Usamos el secret correcto
+          password: ${{ secrets.DOCKERHUB_TOKEN }} # Usamos el secret correcto
+
+      # --- Backend Build y Push ---
+      - name: 📦 Construir y Publicar Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Backend # Ruta al Dockerfile del Backend
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/backendsistema:latest
+          platforms: linux/amd64
+          
+      # --- Frontend Build y Push ---
+      - name: 📦 Construir y Publicar Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Frontend # Ruta al Dockerfile del Frontend
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/trabajador-frontend:latest
+          platforms: linux/amd64
+          
+    outputs:
+      docker_user: ${{ secrets.DOCKERHUB_USERNAME }}
+      
+  # Job 2: Aprovisionamiento de Infraestructura con Terraform en OCI
+  terraform-provision:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout del Código
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Configurar Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # 1. Crear la clave privada API para el proveedor OCI (temporal)
+      - name: 🔑 Crear Clave Privada OCI
+        run: |
+          echo "${{ secrets.OCI_PRIVATE_KEY }}" > oci_api_key.pem
+          chmod 600 oci_api_key.pem
+        working-directory: ${{ env.TERRAFORM_DIR }}
+
+      # 2. Inicializar, Planificar y Aplicar Terraform
+      - name: 🚀 Terraform Init and Apply
+        id: apply
+        run: |
+          terraform init
+          terraform apply -auto-approve -no-color
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        env:
+          # Variables de OCI mapeadas a secrets
+          TF_VAR_tenancy_ocid: ${{ secrets.OCI_TENANCY_OCID }}
+          TF_VAR_user_ocid: ${{ secrets.OCI_USER_OCID }}
+          TF_VAR_fingerprint: ${{ secrets.OCI_FINGERPRINT }}
+          TF_VAR_private_key_content: ${{ secrets.OCI_PRIVATE_KEY }}
+          TF_VAR_compartment_ocid: ${{ secrets.OCI_COMPARTMENT_OCID }}
+          TF_VAR_ssh_public_key_content: ${{ secrets.OCI_SSH_PUBLIC_KEY }}
+
+      # 3. Obtener la IP pública generada
+      - name: 🌐 Obtener la IP pública (Output)
+        id: get_ip
+        run: echo "PUBLIC_IP=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
+        working-directory: ${{ env.TERRAFORM_DIR }}
+
+      # 4. Configurar SSH Agent para el despliegue
+      - name: 🔐 Configurar Agente SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.OCI_PRIVATE_KEY }} 
+
+    outputs:
+      public_ip: ${{ steps.get_ip.outputs.PUBLIC_IP }}
+      docker_user: ${{ needs.build-and-push.outputs.docker_user }}
+
+  # Job 3: Despliegue de la Solución en la VM
+  deploy-to-vm:
+    needs: terraform-provision
+    runs-on: ubuntu-latest
+    env:
+      VM_IP: ${{ needs.terraform-provision.outputs.public_ip }}
+      DOCKER_USER: ${{ needs.terraform-provision.outputs.docker_user }}
+      
+    steps:
+      - name: ⬇️ Checkout del Código
+        uses: actions/checkout@v4
+
+      - name: 📤 Copiar Docker Compose a la VM
+        run: |
+          # Copia el archivo docker-compose.yml de la carpeta Terraforms/
+          scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+              ${{ env.TERRAFORM_DIR }}/docker-compose.yml \
+              ${{ env.VM_SSH_USER }}@${{ env.VM_IP }}:/home/${{ env.VM_SSH_USER }}/docker-compose.yml
+
+      - name: 🐳 Ejecutar Despliegue Docker en la VM
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ env.VM_IP }}
+          username: ${{ env.VM_SSH_USER }}
+          key: ${{ secrets.OCI_PRIVATE_KEY }}
+          script: |
+            # 1. Iniciar sesión en DockerHub
+            docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+            
+            # 2. Reemplazar la IP en el docker-compose.yml (para la URL del Backend/Frontend)
+            # Nota: Esto asume que ${VM_IP} está disponible en el scope del script SSH, lo que es correcto con appleboy/ssh-action.
+            # Sustituimos el placeholder <IP_PUBLICA_VM> por la IP real
+            sed -i 's|<IP_PUBLICA_VM>|${{ env.VM_IP }}|g' docker-compose.yml
+            
+            # 3. Pull y Run con Docker Compose
+            docker compose pull
+            docker compose up -d
+            
+            # 4. Limpiar credenciales de Docker
+            docker logout
+            
+    outputs:
+      final_ip: ${{ needs.terraform-provision.outputs.public_ip }}
+
+  # Job 4: Notificación por Correo (Fallo o Éxito)
+  notify-result:
+    needs: [deploy-to-vm]
+    if: always() # Ejecutar siempre, incluso si los jobs anteriores fallan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📧 Enviar Notificación (Éxito o Fallo)
+        uses: dawidd6/action-send-mail@v3
+        with:
+          # Usar variables del entorno para la IP (si están disponibles)
+          subject: | 
+            ${{ contains(needs.*.result, 'failure') && '❌ FALLO' || '✅ ÉXITO' }} Despliegue OCI | IP: ${{ needs.deploy-to-vm.outputs.final_ip }}
+          to: ${{ secrets.EMAIL_RECIPIENT }}
+          from: ${{ secrets.MAIL_USERNAME }}
+          server_address: smtp.gmail.com 
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          body: |
+            **Estado del Pipeline:** ${{ contains(needs.*.result, 'failure') && 'FALLIDO' || 'EXITOSO' }}
+
+            **Detalles del Despliegue:**
+            - Repositorio: ${{ github.repository }}
+            - Commit: ${{ github.sha }}
+            - IP Pública de la VM: **${{ needs.deploy-to-vm.outputs.final_ip || 'No Aprovisionada/Fallida' }}**
+            - Enlace al Log: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            Por favor, verifique la IP si el estado es ÉXITO.

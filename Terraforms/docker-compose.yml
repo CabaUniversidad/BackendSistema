@@ -1,10 +1,18 @@
+# Fragmento clave de Terraforms/docker-compose.yml
 
 version: '3.8'
-
 services:
-  apache-web:
-    image: httpd:latest
-    container_name: apache_server
-    restart: always
+  backend:
+    # ... (configuración del backend)
+    ports:
+      - "8080:8080" # El backend corre internamente en el puerto 8080
+
+  frontend:
+    # ... (configuración del frontend)
+    depends_on:
+      - backend
+    environment:
+      # ESTA LÍNEA es la clave para inyectar la IP. Usamos un PLACEHOLDER.
+      - API_BASE_URL=http://<IP_PUBLICA_VM>:8080 
     ports:
       - "80:80"
