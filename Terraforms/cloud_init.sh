@@ -1,10 +1,17 @@
 #!/bin/bash
 
-# --- 1. ACTUALIZAR SISTEMA ---
-sudo apt update -y
+# Cloud-Init: Solo permisos, firewall y limpieza de locks.
 
-# --- 2. INSTALAR UFW y CONFIGURAR PUERTOS (Esencial para la seguridad) ---
+# 1. Asegurarse de que no haya locks de apt pendientes (para evitar conflictos)
+sudo rm -f /var/lib/dpkg/lock-frontend
+sudo rm -f /var/lib/apt/lists/lock
+sudo dpkg --configure -a
+
+# 2. INSTALAR UFW y CONFIGURAR PUERTOS (Esencial para la seguridad)
+# Si ufw no está instalado, apt lo instalará en este paso.
 sudo apt install -y ufw
+
+# Configuración del Firewall
 sudo ufw allow 22/tcp
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp

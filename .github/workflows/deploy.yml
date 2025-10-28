@@ -122,10 +122,19 @@ jobs:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       # ⏳ Reducimos la espera, ya que Cloud-Init es más ligero. 60s es suficiente.
-      - name: ⏳ Esperar a que el SSH de la VM esté operativo (60s)
+      - name: ⏳ Esperar a que el puerto 22 (SSH) esté abierto
         run: |
-          echo "Esperando 60 segundos para que la VM inicie el servicio SSH..."
-          sleep 60
+          echo "Esperando hasta que el SSH esté operativo en ${{ env.VM_IP }}..."
+          # Bucle que intenta conectarse al puerto 22 hasta que tenga éxito
+          for i in {1..30}; do
+            if nc -z -w 5 ${{ env.VM_IP }} 22; then
+              echo "SSH operativo después de $((i*5)) segundos."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Error: El puerto SSH no se abrió a tiempo."
+          exit 1
 
       # 🆕 PASO 1: Copiar script de instalación de Docker (setup_docker.sh) a la VM
       - name: 📤 Copiar Instalador de Docker a la VM
@@ -146,6 +155,10 @@ jobs:
             chmod +x setup_docker.sh
             # Ejecutamos el script de instalación
             ./setup_docker.sh
+            # Esperar un poco después de la instalación para que el servicio Docker se levante
+            echo "Esperando 10s para que el servicio Docker se inicie..."
+            sleep 10
+            sudo docker info
             # Limpieza
             rm setup_docker.sh
 
