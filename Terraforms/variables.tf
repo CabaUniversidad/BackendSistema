@@ -1,6 +1,18 @@
 variable "tenancy_ocid" {
     description = "El OCID del arrendamiento (tenancy)" 
-    type        = string # Buena práctica: añadir el tipo
+    type        = string
+}
+# ... (user_ocid, fingerprint, region, compartment_ocid, subnet_id, availability_domain, ubuntu_2204_image_ocid siguen igual)
+
+variable "private_key_path" {
+    # ¡CORRECCIÓN CLAVE! Revertido a private_key_path
+    description = "La ruta al archivo de la clave privada API (oci_api_key.pem)" 
+    type        = string
+}
+
+variable "ssh_public_key_content" {
+    description = "El contenido RAW de la clave pública SSH para acceder a la instancia" 
+    type        = string
 }
 
 variable "user_ocid" {

@@ -24,8 +24,8 @@ provider "oci" {
   fingerprint  = var.fingerprint
   region       = var.region
 
-  # CORREGIDO: Usamos el contenido de la clave, que ahora está declarado en variables.tf
-  private_key = var.private_key_content
+  # ¡CORRECCIÓN CLAVE! Revertimos a 'private_key_path' para que apunte al archivo temporal.
+  private_key_path = var.private_key_path 
 }
 
 # 1. Usa data "template_file" para procesar el script cloud_init.sh
