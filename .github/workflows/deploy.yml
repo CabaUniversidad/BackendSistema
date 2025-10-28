@@ -114,19 +114,42 @@ jobs:
       - name: ⬇️ Checkout del Código
         uses: actions/checkout@v4
 
-      # 🔐 PASO EXTRA: Creamos y usamos un agente SSH temporal para el paso SCP (para robustez)
+      # 🔐 PASO EXTRA: Creamos y usamos un agente SSH temporal para el paso SCP
       - name: 🔑 Configurar Clave Privada para SCP
         id: scp_key_setup
         uses: webfactory/ssh-agent@v0.8.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      # ⏳ AUMENTO CLAVE DEL TIEMPO DE ESPERA
-      - name: ⏳ Esperar a que el SSH de la VM esté operativo y Docker instalado (120s)
+      # ⏳ Reducimos la espera, ya que Cloud-Init es más ligero. 60s es suficiente.
+      - name: ⏳ Esperar a que el SSH de la VM esté operativo (60s)
         run: |
-          echo "Esperando 120 segundos para que la VM inicie el servicio SSH y complete Cloud-Init..."
-          sleep 120
+          echo "Esperando 60 segundos para que la VM inicie el servicio SSH..."
+          sleep 60
 
+      # 🆕 PASO 1: Copiar script de instalación de Docker (setup_docker.sh) a la VM
+      - name: 📤 Copiar Instalador de Docker a la VM
+        run: |
+          scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+              ${{ env.TERRAFORM_DIR }}/setup_docker.sh \
+              ${{ env.VM_SSH_USER }}@${{ env.VM_IP }}:/home/${{ env.VM_SSH_USER }}/setup_docker.sh
+              
+
+      # 🆕 PASO 2: Ejecutar script de instalación de Docker en la VM
+      - name: 🐳 Instalar Docker por SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ env.VM_IP }}
+          username: ${{ env.VM_SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            chmod +x setup_docker.sh
+            # Ejecutamos el script de instalación
+            ./setup_docker.sh
+            # Limpieza
+            rm setup_docker.sh
+
+      # ⬇️ PASO 3: Copiar Docker Compose (Mantenemos el nombre del paso original)
       - name: 📤 Copiar Docker Compose a la VM
         run: |
           scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
@@ -134,6 +157,7 @@ jobs:
               ${{ env.VM_SSH_USER }}@${{ env.VM_IP }}:/home/${{ env.VM_SSH_USER }}/docker-compose.yml
               
 
+      # ⬇️ PASO 4: Ejecutar Despliegue Docker
       - name: 🐳 Ejecutar Despliegue Docker en la VM
         uses: appleboy/ssh-action@master
         with:
@@ -141,18 +165,8 @@ jobs:
           username: ${{ env.VM_SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }} 
           script: |
-            echo "--- DIAGNÓSTICO DE DOCKER ---"
-            # Verificar si el binario docker existe en el PATH del usuario root/sudo
-            which docker
-            
-            # Si el comando 'which docker' funciona, el siguiente comando intentará usar Docker
-            # Si falla aquí, significa que el servicio no está levantado O que Docker no está
-            # disponible en el PATH de la sesión SSH.
-            sudo docker info || echo "ERROR: El servicio Docker aún no está listo o falló."
-            
-            echo "--- INICIO DE DESPLIEGUE ---"
-            
-            # Usamos SUDO en todos los comandos de Docker para asegurar ejecución
+            # Este paso ya no necesita diagnóstico, asume que la instalación previa fue exitosa.
+            # Usamos SUDO en todos los comandos para ejecución inmediata.
             sudo docker login -u ${{ secrets.DOCKER_USER}} -p ${{ secrets.DOCKER_PASSWORD }}
             sed -i 's|<IP_PUBLICA_VM>|${{ env.VM_IP }}|g' docker-compose.yml
             sudo docker compose pull
