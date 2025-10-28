@@ -71,6 +71,8 @@ jobs:
         working-directory: ${{ env.TERRAFORM_DIR }}
 
       # 2. Inicializar, Planificar y Aplicar Terraform
+      # Fragmento del Job terraform-provision / paso 'Terraform Init and Apply'
+
       - name: 🚀 Terraform Init and Apply
         id: apply
         run: |
@@ -82,9 +84,19 @@ jobs:
           TF_VAR_tenancy_ocid: ${{ secrets.OCI_TENANCY_OCID }}
           TF_VAR_user_ocid: ${{ secrets.OCI_USER_OCID }}
           TF_VAR_fingerprint: ${{ secrets.OCI_FINGERPRINT }}
-          TF_VAR_private_key_content: ${{ secrets.OCI_PRIVATE_KEY }}
+          
+          # 🚨 ¡USAR EL NOMBRE DEL SECRET REAL DE TU IMAGEN! 🚨
+          TF_VAR_private_key_content: ${{ secrets.SSH_PRIVATE_KEY }}
+          
           TF_VAR_compartment_ocid: ${{ secrets.OCI_COMPARTMENT_OCID }}
           TF_VAR_ssh_public_key_content: ${{ secrets.OCI_SSH_PUBLIC_KEY }}
+          
+          # 🚨 ¡VARIABLES ESTÁTICAS AÑADIDAS! 🚨
+          TF_VAR_region: sa-saopaulo-1
+          TF_VAR_subnet_id: ocid1.subnet.oc1.sa-saopaulo-1.aaaaaaaaehx74fylbfiizzrzhzgxl33wwaaejlg65m2piuaovwe23siuevfq
+          TF_VAR_availability_domain: XZyx:SA-SAOPAULO-1-AD-1
+          TF_VAR_ubuntu_2204_image_ocid: ocid1.image.oc1.sa-saopaulo-1.aaaaaaaapi57wbgrd2xz5pppt2omxiwdp4su2jpv5gwlmxo2abkulz2oqh7a
+          # -----------------------------------------------
 
       # 3. Obtener la IP pública generada
       - name: 🌐 Obtener la IP pública (Output)
