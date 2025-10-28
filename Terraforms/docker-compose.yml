@@ -1,0 +1,10 @@
+
+version: '3.8'
+
+services:
+  apache-web:
+    image: httpd:latest
+    container_name: apache_server
+    restart: always
+    ports:
+      - "80:80"

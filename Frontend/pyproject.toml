@@ -1,0 +1,32 @@
+[project]
+name = "front-web"
+version = "0.1.0"
+description = "Aplicación Flet Web"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    { name = "Flet developer", email = "you@example.com" }
+]
+dependencies = [
+  "faker>=37.11.0",
+  "flet[all]==0.28.3",
+]
+
+[tool.flet]
+# org name in reverse domain name notation, usado para bundle ID en iOS y Android
+org = "com.mycompany"
+
+# Nombre de la app que aparece en Android, iOS y ventanas de escritorio
+product = "front-web"
+
+# Nombre de la compañía para mostrar en about dialogs
+company = "Flet"
+
+# Copyright de la app
+copyright = "Copyright (C) 2025 by Flet"
+
+[tool.flet.app]
+path = "src"
+
+[tool.poetry]
+package-mode = false
