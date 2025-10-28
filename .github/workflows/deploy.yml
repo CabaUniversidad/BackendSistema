@@ -37,7 +37,7 @@ jobs:
         with:
           context: ./Backend # Ruta al Dockerfile del Backend
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/backendsistema:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/backend_fastapi:latest
           platforms: linux/amd64
           
       # --- Frontend Build y Push ---
@@ -46,7 +46,7 @@ jobs:
         with:
           context: ./Frontend # Ruta al Dockerfile del Frontend
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/trabajador-frontend:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/front_web:latest
           platforms: linux/amd64
           
     outputs:
