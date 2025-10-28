@@ -25,7 +25,6 @@ jobs:
       - name: 🔑 Login a DockerHub
         uses: docker/login-action@v3
         with:
-          # Asegúrate que DOCKER_USER y DOCKER_PASSWORD están definidos y no vacíos.
           username: ${{ secrets.DOCKER_USER }} 
           password: ${{ secrets.DOCKER_PASSWORD }}
 
@@ -61,25 +60,22 @@ jobs:
       - name: 🛠️ Configurar Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # 1. 🔑 CONVERSIÓN DE LA CLAVE PRIVADA (¡ESTRATEGIA DEFINITIVA!)
-      # Forzamos la clave OpenSSH/ED25519 a un formato PKCS#8 compatible con OCI.
+      # 1. 🔑 CREAR Y CONVERTIR CLAVE PRIVADA OCI (¡SOLUCIÓN DEFINITIVA DE FORMATO!)
       - name: 🔑 Crear y Convertir Clave Privada OCI (Formato PKCS#8)
         run: |
-          # 1. Creamos el archivo temporal con el contenido del Secret
-          printf "%s\n" "${{ secrets.SSH_PRIVATE_KEY }}" > temp_key.pem
+          # 1. Usamos cat y EOF para escribir el secret multilínea con precisión
+          cat << EOF > temp_key.pem
+          ${{ secrets.SSH_PRIVATE_KEY }}
+          EOF
           chmod 600 temp_key.pem
           
-          # 2. Usamos OpenSSL para leer la clave (que es ED25519) y convertirla a PKCS#8.
-          # Este formato es el más compatible con el proveedor OCI.
+          # 2. Usamos OpenSSL para convertir la clave al formato PKCS#8
           openssl pkcs8 -in temp_key.pem -topk8 -nocrypt -out oci_api_key.pem
           
           # 3. Limpiamos el archivo temporal
           rm temp_key.pem
           
-          # 4. Verificamos la clave convertida (opcional, pero útil para depurar)
-          echo "Clave convertida creada como oci_api_key.pem"
         working-directory: ${{ env.TERRAFORM_DIR }}
-
 
       # 2. Inicializar, Planificar y Aplicar Terraform
       - name: 🚀 Terraform Init and Apply
@@ -94,7 +90,7 @@ jobs:
           TF_VAR_user_ocid: ${{ secrets.OCI_USER_OCID }}
           TF_VAR_fingerprint: ${{ secrets.OCI_FINGERPRINT }}
           
-          # Clave: Pasamos la RUTA al archivo CONVERTIDO (oci_api_key.pem)
+          # Clave: Pasamos la RUTA al archivo CONVERTIDO
           TF_VAR_private_key_path: oci_api_key.pem 
           
           # VM Metadata
@@ -106,8 +102,6 @@ jobs:
           TF_VAR_subnet_id: ocid1.subnet.oc1.sa-saopaulo-1.aaaaaaaaehx74fylbfiizzrzhzgxl33wwaaejlg65m2piuaovwe23siuevfq
           TF_VAR_availability_domain: XZyx:SA-SAOPAULO-1-AD-1
           TF_VAR_ubuntu_2204_image_ocid: ocid1.image.oc1.sa-saopaulo-1.aaaaaaaapi57wbgrd2xz5pppt2omxiwdp4su2jpv5gwlmxo2abkulz2oqh7a
-
-      # ... (El resto del job sigue igual, usando la IP)
 
       # 3. Obtener la IP pública generada
       - name: 🌐 Obtener la IP pública (Output)
