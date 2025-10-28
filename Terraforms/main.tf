@@ -21,8 +21,8 @@ provider "oci" {
   fingerprint  = var.fingerprint
   region       = var.region
 
-  # ¡Clave! Usa la ruta del archivo temporal.
-  private_key_path = var.private_key_path
+  # ¡CAMBIO CLAVE! Usamos 'private_key' para el contenido.
+  private_key = var.private_key 
 }
 
 # 1. Usa data "template_file" para procesar el script cloud_init.sh

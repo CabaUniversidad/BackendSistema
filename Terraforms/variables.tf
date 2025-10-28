@@ -13,8 +13,9 @@ variable "fingerprint" {
     type        = string
 }
 
-variable "private_key_path" {
-    description = "La ruta al archivo de la clave privada API (oci_api_key.pem)" 
+variable "private_key" {
+    # ¡CAMBIO CLAVE! Ahora es el contenido (string), no la ruta.
+    description = "El contenido RAW de la clave privada API" 
     type        = string
 }
 
