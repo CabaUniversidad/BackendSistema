@@ -122,11 +122,18 @@ jobs:
       - name: ⬇️ Checkout del Código
         uses: actions/checkout@v4
 
+      # ¡NUEVO PASO! Esperar a que el SSH de la VM se inicie.
+      - name: ⏳ Esperar a que el SSH de la VM esté operativo
+        run: |
+          echo "Esperando 45 segundos para que la VM inicie el servicio SSH..."
+          sleep 45
+
       - name: 📤 Copiar Docker Compose a la VM
         run: |
           scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
               ${{ env.TERRAFORM_DIR }}/docker-compose.yml \
               ${{ env.VM_SSH_USER }}@${{ env.VM_IP }}:/home/${{ env.VM_SSH_USER }}/docker-compose.yml
+              
 
       - name: 🐳 Ejecutar Despliegue Docker en la VM
         uses: appleboy/ssh-action@master
