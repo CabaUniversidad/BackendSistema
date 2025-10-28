@@ -26,9 +26,7 @@ jobs:
       - name: 🔑 Login a DockerHub
         uses: docker/login-action@v3
         with:
-          # CAMBIO 1: Reemplazar DOCKER_USERpor DOCKER_USER
           username: ${{ secrets.DOCKER_USER }} 
-          # CAMBIO 2: Reemplazar DOCKER_PASSWORD por DOCKER_PASSWORD
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       # --- Backend Build y Push ---
@@ -66,13 +64,12 @@ jobs:
       # 1. Crear la clave privada API para el proveedor OCI (temporal)
       - name: 🔑 Crear Clave Privada OCI
         run: |
-          echo "${{ secrets.OCI_PRIVATE_KEY }}" > oci_api_key.pem
+          # ¡CORREGIDO! Usamos SSH_PRIVATE_KEY de ahora en adelante
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > oci_api_key.pem
           chmod 600 oci_api_key.pem
         working-directory: ${{ env.TERRAFORM_DIR }}
 
       # 2. Inicializar, Planificar y Aplicar Terraform
-      # Fragmento del Job terraform-provision / paso 'Terraform Init and Apply'
-
       - name: 🚀 Terraform Init and Apply
         id: apply
         run: |
@@ -80,18 +77,15 @@ jobs:
           terraform apply -auto-approve -no-color
         working-directory: ${{ env.TERRAFORM_DIR }}
         env:
-          # Variables de OCI mapeadas a secrets
+          # Variables de OCI mapeadas a secrets (CORREGIDO SSH_PRIVATE_KEY)
           TF_VAR_tenancy_ocid: ${{ secrets.OCI_TENANCY_OCID }}
           TF_VAR_user_ocid: ${{ secrets.OCI_USER_OCID }}
           TF_VAR_fingerprint: ${{ secrets.OCI_FINGERPRINT }}
-          
-          # 🚨 ¡USAR EL NOMBRE DEL SECRET REAL DE TU IMAGEN! 🚨
           TF_VAR_private_key_content: ${{ secrets.SSH_PRIVATE_KEY }}
-          
           TF_VAR_compartment_ocid: ${{ secrets.OCI_COMPARTMENT_OCID }}
           TF_VAR_ssh_public_key_content: ${{ secrets.OCI_SSH_PUBLIC_KEY }}
-          
-          # 🚨 ¡VARIABLES ESTÁTICAS AÑADIDAS! 🚨
+
+          # ¡VARIABLES ESTÁTICAS PARA OCI AÑADIDAS!
           TF_VAR_region: sa-saopaulo-1
           TF_VAR_subnet_id: ocid1.subnet.oc1.sa-saopaulo-1.aaaaaaaaehx74fylbfiizzrzhzgxl33wwaaejlg65m2piuaovwe23siuevfq
           TF_VAR_availability_domain: XZyx:SA-SAOPAULO-1-AD-1
@@ -108,7 +102,8 @@ jobs:
       - name: 🔐 Configurar Agente SSH
         uses: webfactory/ssh-agent@v0.8.0
         with:
-          ssh-private-key: ${{ secrets.OCI_PRIVATE_KEY }} 
+          # ¡CORREGIDO! Usamos SSH_PRIVATE_KEY
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }} 
 
     outputs:
       public_ip: ${{ steps.get_ip.outputs.PUBLIC_IP }}
@@ -138,14 +133,13 @@ jobs:
         with:
           host: ${{ env.VM_IP }}
           username: ${{ env.VM_SSH_USER }}
-          key: ${{ secrets.OCI_PRIVATE_KEY }}
+          # ¡CORREGIDO! Usamos SSH_PRIVATE_KEY
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             # 1. Iniciar sesión en DockerHub
             docker login -u ${{ secrets.DOCKER_USER}} -p ${{ secrets.DOCKER_PASSWORD }}
             
             # 2. Reemplazar la IP en el docker-compose.yml (para la URL del Backend/Frontend)
-            # Nota: Esto asume que ${VM_IP} está disponible en el scope del script SSH, lo que es correcto con appleboy/ssh-action.
-            # Sustituimos el placeholder <IP_PUBLICA_VM> por la IP real
             sed -i 's|<IP_PUBLICA_VM>|${{ env.VM_IP }}|g' docker-compose.yml
             
             # 3. Pull y Run con Docker Compose
