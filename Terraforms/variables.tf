@@ -14,7 +14,6 @@ variable "fingerprint" {
 }
 
 variable "private_key_path" {
-    # ¡CORRECCIÓN CLAVE! Revertido a private_key_path
     description = "La ruta al archivo de la clave privada API (oci_api_key.pem)" 
     type        = string
 }

@@ -25,6 +25,7 @@ jobs:
       - name: 🔑 Login a DockerHub
         uses: docker/login-action@v3
         with:
+          # Asegúrate que DOCKER_USER y DOCKER_PASSWORD están definidos y no vacíos.
           username: ${{ secrets.DOCKER_USER }} 
           password: ${{ secrets.DOCKER_PASSWORD }}
 
@@ -60,11 +61,11 @@ jobs:
       - name: 🛠️ Configurar Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # 1. 🔑 CREAR EL ARCHIVO DE CLAVE PRIVADA TEMPORAL (¡REINTRODUCIDO!)
-      # Forzamos la creación de un archivo PEM con el contenido del Secret SSH_PRIVATE_KEY.
+      # 1. 🔑 CREAR EL ARCHIVO DE CLAVE PRIVADA TEMPORAL (¡Con salto de línea forzado!)
       - name: 🔑 Crear Clave Privada OCI (Archivo Temporal)
         run: |
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > oci_api_key.pem
+          # El '\n' al final asegura que la clave termine con un salto de línea.
+          printf "%s\n" "${{ secrets.SSH_PRIVATE_KEY }}" > oci_api_key.pem
           chmod 600 oci_api_key.pem
         working-directory: ${{ env.TERRAFORM_DIR }}
 
@@ -76,19 +77,19 @@ jobs:
           terraform apply -auto-approve -no-color
         working-directory: ${{ env.TERRAFORM_DIR }}
         env:
-          # Variables de OCI mapeadas a secrets
+          # OCI API Secrets
           TF_VAR_tenancy_ocid: ${{ secrets.OCI_TENANCY_OCID }}
           TF_VAR_user_ocid: ${{ secrets.OCI_USER_OCID }}
           TF_VAR_fingerprint: ${{ secrets.OCI_FINGERPRINT }}
           
-          # ¡CLAVE! Pasamos la RUTA al archivo oci_api_key.pem
+          # Clave: Pasamos la RUTA al archivo temporal
           TF_VAR_private_key_path: oci_api_key.pem 
           
-          # Compartimento y Clave Pública SSH (Contenido)
+          # VM Metadata
           TF_VAR_compartment_ocid: ${{ secrets.OCI_COMPARTMENT_OCID }}
           TF_VAR_ssh_public_key_content: ${{ secrets.OCI_SSH_PUBLIC_KEY }}
 
-          # ¡VARIABLES ESTÁTICAS AÑADIDAS!
+          # Variables Estáticas
           TF_VAR_region: sa-saopaulo-1
           TF_VAR_subnet_id: ocid1.subnet.oc1.sa-saopaulo-1.aaaaaaaaehx74fylbfiizzrzhzgxl33wwaaejlg65m2piuaovwe23siuevfq
           TF_VAR_availability_domain: XZyx:SA-SAOPAULO-1-AD-1

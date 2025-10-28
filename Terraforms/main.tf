@@ -3,12 +3,10 @@
 # Bloque requerido para configurar los proveedores
 terraform {
   required_providers {
-    # Utilizamos el proveedor oficial 'oracle/oci' como recomienda Terraform
     oci = {
       source  = "oracle/oci"
       version = "~> 5.0"
     }
-    # Mantener el proveedor 'template' para cloud-init
     template = {
       source  = "hashicorp/template"
       version = "~> 2.2"
@@ -18,13 +16,12 @@ terraform {
 
 # Configuración del proveedor OCI
 provider "oci" {
-  # Las siguientes variables se pasan como TF_VAR_<nombre> desde GitHub Actions
   tenancy_ocid = var.tenancy_ocid
   user_ocid    = var.user_ocid
   fingerprint  = var.fingerprint
   region       = var.region
 
-  # ¡CORRECCIÓN CLAVE! Usamos 'private_key_path' para apuntar al archivo temporal creado.
+  # ¡Clave! Usa la ruta del archivo temporal creado en el YAML.
   private_key_path = var.private_key_path
 }
 
@@ -55,7 +52,6 @@ resource "oci_core_instance" "Ubuntu_vm" {
 
  metadata = {
   ssh_authorized_keys = var.ssh_public_key_content
-  # Envía el script completo de Bash, ya codificado en base64
   user_data      = base64encode(data.template_file.cloud_init_script.rendered)
  }
 }
