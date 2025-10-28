@@ -25,7 +25,7 @@ provider "oci" {
 
 # 1. Usa data "template_file" para procesar el script cloud_init.sh
 data "template_file" "cloud_init_script" {
-  template = file("${path.module}/cloud_init.sh")
+  template = file("${path.module}/cloud_init.sh") # ⬅️ DEBE APUNTAR A TU SCRIPT
 }
 
 # Recurso de la instancia de la máquina virtual (Compute Instance)
@@ -50,7 +50,7 @@ resource "oci_core_instance" "Ubuntu_vm" {
 
   metadata = {
     ssh_authorized_keys = var.ssh_public_key_content
-    user_data          = base64encode(data.template_file.cloud_init_script.rendered)
+    user_data= base64encode(data.template_file.cloud_init_script.rendered)  
   }
 }
 
