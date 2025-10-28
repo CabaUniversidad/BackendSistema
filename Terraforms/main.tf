@@ -19,8 +19,8 @@ provider "oci" {
   fingerprint  = var.fingerprint
   region       = var.region
 
-  # ¡CAMBIO CLAVE! Ahora es la RUTA al archivo de la clave (no el contenido).
-  private_key = var.ocid_private_key_path 
+  # 🚀 ¡CORRECCIÓN FINAL! Usar private_key_path
+  private_key_path = var.ocid_private_key_path 
 }
 
 # 1. Usa data "template_file" para procesar el script cloud_init.sh

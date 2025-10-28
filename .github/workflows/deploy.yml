@@ -25,11 +25,9 @@ jobs:
       - name: 🔑 Login a DockerHub
         uses: docker/login-action@v3
         with:
-          # ¡Sintaxis correcta para Docker Login!
           username: ${{ secrets.DOCKER_USER }} 
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # --- Backend Build y Push ---
       - name: 📦 Construir y Publicar Backend
         uses: docker/build-push-action@v5
         with:
@@ -38,7 +36,6 @@ jobs:
           tags: ${{ secrets.DOCKER_USER}}/backend_fastapi:latest
           platforms: linux/amd64
           
-      # --- Frontend Build y Push ---
       - name: 📦 Construir y Publicar Frontend
         uses: docker/build-push-action@v5
         with:
@@ -61,14 +58,13 @@ jobs:
       - name: 🛠️ Configurar Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # 1. 🔑 CREAR ARCHIVO TEMPORAL PARA CLAVE API DE OCI (Resuelve el problema multilínea)
+      # 1. 🔑 CREAR ARCHIVO TEMPORAL PARA CLAVE API DE OCI (Maneja claves multilínea)
       - name: 🔑 Crear Archivo Temporal de Clave Privada OCI (Ruta)
         id: create_oci_key
         shell: bash
         run: |
-          # Usamos 'EOF' para manejar la clave multilínea correctamente
           echo "${{ secrets.OCID_PRIVATE_KEY }}" > oci_api_key.pem
-          echo "OCI_API_KEY_PATH=$PWD/oci_api_key.pem" >> $GITHUB_ENV # Guardamos la ruta
+          echo "OCI_API_KEY_PATH=$PWD/oci_api_key.pem" >> $GITHUB_ENV # Guarda la RUTA
 
       # 2. Inicializar, Planificar y Aplicar Terraform
       - name: 🚀 Terraform Init and Apply
@@ -83,7 +79,7 @@ jobs:
           TF_VAR_user_ocid: ${{ secrets.OCI_USER_OCID }}
           TF_VAR_fingerprint: ${{ secrets.OCI_FINGERPRINT }}
           
-          # ¡CAMBIO CLAVE! Usamos la RUTA al archivo, no el contenido.
+          # ¡Pasa la RUTA al archivo temporal!
           TF_VAR_ocid_private_key_path: ${{ env.OCI_API_KEY_PATH }}
           
           # Variables Estáticas
@@ -105,7 +101,7 @@ jobs:
       - name: 🔐 Configurar Agente SSH (Clave de la VM)
         uses: webfactory/ssh-agent@v0.8.0
         with:
-          # SSH_PRIVATE_KEY = llaves-vm/oci_vm_key
+          # Clave Privada de la VM para el acceso SSH
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }} 
 
     outputs:
@@ -124,13 +120,12 @@ jobs:
       - name: ⬇️ Checkout del Código
         uses: actions/checkout@v4
 
-      # 🔐 ¡RE-ACTIVAR AGENTE SSH! (Necesario para heredar la clave del Job 2 y usarla en este Job)
+      # 🔐 ¡RE-ACTIVAR AGENTE SSH! (Asegura que la clave sea accesible en este Job)
       - name: 🔐 Configurar Agente SSH (Clave de la VM)
         uses: webfactory/ssh-agent@v0.8.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }} 
 
-      # ⏳ Paso de espera
       - name: ⏳ Esperar a que el SSH de la VM esté operativo
         run: |
           echo "Esperando 45 segundos para que la VM inicie el servicio SSH..."
@@ -138,7 +133,7 @@ jobs:
 
       - name: 📤 Copiar Docker Compose a la VM
         run: |
-          # SCP usa la clave inyectada por el Agente SSH.
+          # scp usará la clave del Agente SSH automáticamente.
           scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
               ${{ env.TERRAFORM_DIR }}/docker-compose.yml \
               ${{ env.VM_SSH_USER }}@${{ env.VM_IP }}:/home/${{ env.VM_SSH_USER }}/docker-compose.yml
@@ -149,19 +144,12 @@ jobs:
         with:
           host: ${{ env.VM_IP }}
           username: ${{ env.VM_SSH_USER }}
-          # ¡IMPORTANTE! La clave se omite, ya la maneja el Agente SSH.
+          # El parámetro 'key' se omite intencionalmente.
           script: |
-            # 1. Iniciar sesión en DockerHub
             docker login -u ${{ secrets.DOCKER_USER}} -p ${{ secrets.DOCKER_PASSWORD }}
-            
-            # 2. Reemplazar la IP en el docker-compose.yml
             sed -i 's|<IP_PUBLICA_VM>|${{ env.VM_IP }}|g' docker-compose.yml
-            
-            # 3. Pull y Run con Docker Compose
             docker compose pull
             docker compose up -d
-            
-            # 4. Limpiar credenciales de Docker
             docker logout
             
     outputs:
@@ -188,7 +176,6 @@ jobs:
           password: ${{ secrets.MAIL_PASSWORD }}
           body: |
             **Estado del Pipeline:** ${{ contains(needs.*.result, 'failure') && 'FALLIDO' || 'EXITOSO' }}
-
             **Detalles del Despliegue:**
             - Repositorio: ${{ github.repository }}
             - Commit: ${{ github.sha }}

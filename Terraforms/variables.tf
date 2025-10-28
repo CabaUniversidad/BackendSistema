@@ -13,7 +13,7 @@ variable "fingerprint" {
     type        = string
 }
 
-variable "ocid_private_key_path" { # ⬅️ ¡RENOMBRADO! Ahora se espera la ruta del archivo.
+variable "ocid_private_key_path" {
     description = "La RUTA al archivo de la clave privada API de OCI." 
     type        = string
 }
