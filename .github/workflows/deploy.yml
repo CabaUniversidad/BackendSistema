@@ -6,7 +6,7 @@ on:
       - dev
 
 env:
-  VM_SSH_USER: ubuntu # Definido como ENV, no Secret.
+  VM_SSH_USER: ubuntu 
   TERRAFORM_DIR: Terraforms
   
 jobs:
@@ -58,7 +58,7 @@ jobs:
       - name: 🛠️ Configurar Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # 1. 🔑 CREAR ARCHIVO TEMPORAL PARA CLAVE API DE OCI (Maneja claves multilínea)
+      # 1. 🔑 CREAR ARCHIVO TEMPORAL PARA CLAVE API DE OCI
       - name: 🔑 Crear Archivo Temporal de Clave Privada OCI (Ruta)
         id: create_oci_key
         shell: bash
@@ -77,7 +77,7 @@ jobs:
           TF_VAR_tenancy_ocid: ${{ secrets.OCI_TENANCY_OCID }}
           TF_VAR_user_ocid: ${{ secrets.OCI_USER_OCID }}
           TF_VAR_fingerprint: ${{ secrets.OCI_FINGERPRINT }}
-          TF_VAR_ocid_private_key_path: ${{ env.OCI_API_KEY_PATH }} # Ruta al archivo temporal
+          TF_VAR_ocid_private_key_path: ${{ env.OCI_API_KEY_PATH }}
           TF_VAR_compartment_ocid: ${{ secrets.OCI_COMPARTMENT_OCID }}
           TF_VAR_ssh_public_key_content: ${{ secrets.OCI_SSH_PUBLIC_KEY }}
           TF_VAR_region: sa-saopaulo-1
@@ -92,7 +92,7 @@ jobs:
         run: echo "PUBLIC_IP=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
         working-directory: ${{ env.TERRAFORM_DIR }}
 
-      # 4. Configurar SSH Agent para el despliegue (Necesario para el paso 'scp' en el Job 3)
+      # 4. Configurar SSH Agent para el despliegue
       - name: 🔐 Configurar Agente SSH (Clave de la VM)
         uses: webfactory/ssh-agent@v0.8.0
         with:
@@ -121,13 +121,13 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: ⏳ Esperar a que el SSH de la VM esté operativo
+      # ⏳ AUMENTO CLAVE DEL TIEMPO DE ESPERA
+      - name: ⏳ Esperar a que el SSH de la VM esté operativo y Docker instalado (120s)
         run: |
-          echo "Esperando 45 segundos para que la VM inicie el servicio SSH..."
-          sleep 45
+          echo "Esperando 120 segundos para que la VM inicie el servicio SSH y complete Cloud-Init..."
+          sleep 120
 
       - name: 📤 Copiar Docker Compose a la VM
-        # SCP ahora usa el agente SSH temporal configurado en el paso anterior.
         run: |
           scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
               ${{ env.TERRAFORM_DIR }}/docker-compose.yml \
@@ -141,22 +141,30 @@ jobs:
           username: ${{ env.VM_SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }} 
           script: |
-            # 1. Iniciar sesión en DockerHub (Usamos SUDO)
+            echo "--- DIAGNÓSTICO DE DOCKER ---"
+            # Verificar si el binario docker existe en el PATH del usuario root/sudo
+            which docker
+            
+            # Si el comando 'which docker' funciona, el siguiente comando intentará usar Docker
+            # Si falla aquí, significa que el servicio no está levantado O que Docker no está
+            # disponible en el PATH de la sesión SSH.
+            sudo docker info || echo "ERROR: El servicio Docker aún no está listo o falló."
+            
+            echo "--- INICIO DE DESPLIEGUE ---"
+            
+            # Usamos SUDO en todos los comandos de Docker para asegurar ejecución
             sudo docker login -u ${{ secrets.DOCKER_USER}} -p ${{ secrets.DOCKER_PASSWORD }}
-            
-            # 2. Reemplazar la IP en el docker-compose.yml
             sed -i 's|<IP_PUBLICA_VM>|${{ env.VM_IP }}|g' docker-compose.yml
-            
-            # 3. Pull y Run con Docker Compose (Usamos SUDO)
-            # Nota: 'docker compose' es el comando V2.
             sudo docker compose pull
             sudo docker compose up -d
-            
-            # 4. Limpiar credenciales de Docker (Usamos SUDO)
             sudo docker logout
             
     outputs:
       final_ip: ${{ needs.terraform-provision.outputs.public_ip }}
+
+  # Job 4: Notificación por Correo (Fallo o Éxito)
+# ... (rest of the job)
+
 
   # Job 4: Notificación por Correo (Fallo o Éxito)
   notify-result:
