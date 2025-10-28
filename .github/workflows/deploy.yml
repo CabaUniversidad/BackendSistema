@@ -61,11 +61,14 @@ jobs:
       - name: 🛠️ Configurar Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # 1. 🔑 Crear Clave como Variable de Entorno (Sin Archivo Temporal)
-      - name: 🔑 Preparar Clave Privada OCI (Contenido)
-        # Este paso es solo para depuración y para garantizar que la clave multilínea se procese
-        run: echo "Preparando clave como contenido..."
-
+      # 1. 🔑 CREAR ARCHIVO TEMPORAL PARA CLAVE API DE OCI (Resuelve el problema multilínea)
+      - name: 🔑 Crear Archivo Temporal de Clave Privada OCI (Ruta)
+        id: create_oci_key
+        shell: bash
+        run: |
+          # Usamos 'EOF' para manejar la clave multilínea correctamente
+          echo "${{ secrets.OCID_PRIVATE_KEY }}" > oci_api_key.pem
+          echo "OCI_API_KEY_PATH=$PWD/oci_api_key.pem" >> $GITHUB_ENV # Guardamos la ruta
 
       # 2. Inicializar, Planificar y Aplicar Terraform
       - name: 🚀 Terraform Init and Apply
@@ -80,17 +83,17 @@ jobs:
           TF_VAR_user_ocid: ${{ secrets.OCI_USER_OCID }}
           TF_VAR_fingerprint: ${{ secrets.OCI_FINGERPRINT }}
           
-          # 🔑 ¡CLAVE OCI RENOMBRADA!
-          TF_VAR_ocid_private_key: ${{ secrets.OCID_PRIVATE_KEY }}
+          # ¡CAMBIO CLAVE! Usamos la RUTA al archivo, no el contenido.
+          TF_VAR_ocid_private_key_path: ${{ env.OCI_API_KEY_PATH }}
           
           # Variables Estáticas
           TF_VAR_compartment_ocid: ${{ secrets.OCI_COMPARTMENT_OCID }}
           TF_VAR_ssh_public_key_content: ${{ secrets.OCI_SSH_PUBLIC_KEY }}
-          TF_VAR_region: sa-saopaulo-1 
+          TF_VAR_region: sa-saopaulo-1
           TF_VAR_subnet_id: ocid1.subnet.oc1.sa-saopaulo-1.aaaaaaaaehx74fylbfiizzrzhzgxl33wwaaejlg65m2piuaovwe23siuevfq
           TF_VAR_availability_domain: XZyx:SA-SAOPAULO-1-AD-1
           TF_VAR_ubuntu_2204_image_ocid: ocid1.image.oc1.sa-saopaulo-1.aaaaaaaapi57wbgrd2xz5pppt2omxiwdp4su2jpv5gwlmxo2abkulz2oqh7a
- 
+          
 
       # 3. Obtener la IP pública generada
       - name: 🌐 Obtener la IP pública (Output)
@@ -99,10 +102,11 @@ jobs:
         working-directory: ${{ env.TERRAFORM_DIR }}
 
       # 4. Configurar SSH Agent para el despliegue
-      - name: 🔐 Configurar Agente SSH
+      - name: 🔐 Configurar Agente SSH (Clave de la VM)
         uses: webfactory/ssh-agent@v0.8.0
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # SSH_PRIVATE_KEY = llaves-vm/oci_vm_key
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }} 
 
     outputs:
       public_ip: ${{ steps.get_ip.outputs.PUBLIC_IP }}
@@ -120,7 +124,13 @@ jobs:
       - name: ⬇️ Checkout del Código
         uses: actions/checkout@v4
 
-      # ¡NUEVO PASO! Esperar a que el SSH de la VM se inicie.
+      # 🔐 ¡RE-ACTIVAR AGENTE SSH! (Necesario para heredar la clave del Job 2 y usarla en este Job)
+      - name: 🔐 Configurar Agente SSH (Clave de la VM)
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }} 
+
+      # ⏳ Paso de espera
       - name: ⏳ Esperar a que el SSH de la VM esté operativo
         run: |
           echo "Esperando 45 segundos para que la VM inicie el servicio SSH..."
@@ -128,17 +138,18 @@ jobs:
 
       - name: 📤 Copiar Docker Compose a la VM
         run: |
-          # scp usará automáticamente la clave SSH inyectada por el Agente SSH.
+          # SCP usa la clave inyectada por el Agente SSH.
           scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
               ${{ env.TERRAFORM_DIR }}/docker-compose.yml \
               ${{ env.VM_SSH_USER }}@${{ env.VM_IP }}:/home/${{ env.VM_SSH_USER }}/docker-compose.yml
-
+              
 
       - name: 🐳 Ejecutar Despliegue Docker en la VM
         uses: appleboy/ssh-action@master
         with:
           host: ${{ env.VM_IP }}
-          username: ${{ env.VM_SSH_USER }} 
+          username: ${{ env.VM_SSH_USER }}
+          # ¡IMPORTANTE! La clave se omite, ya la maneja el Agente SSH.
           script: |
             # 1. Iniciar sesión en DockerHub
             docker login -u ${{ secrets.DOCKER_USER}} -p ${{ secrets.DOCKER_PASSWORD }}
