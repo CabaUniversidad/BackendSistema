@@ -21,7 +21,7 @@ provider "oci" {
   fingerprint  = var.fingerprint
   region       = var.region
 
-  # ¡Clave! Usa la ruta del archivo CONVERTIDO.
+  # ¡Clave! Usa la ruta del archivo temporal.
   private_key_path = var.private_key_path
 }
 

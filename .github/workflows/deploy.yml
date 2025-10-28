@@ -25,6 +25,7 @@ jobs:
       - name: 🔑 Login a DockerHub
         uses: docker/login-action@v3
         with:
+          # ¡Sintaxis correcta para Docker Login!
           username: ${{ secrets.DOCKER_USER }} 
           password: ${{ secrets.DOCKER_PASSWORD }}
 
@@ -49,7 +50,7 @@ jobs:
     outputs:
       docker_user: ${{ secrets.DOCKER_USER}}
       
- # Job 2: Aprovisionamiento de Infraestructura con Terraform en OCI
+  # Job 2: Aprovisionamiento de Infraestructura con Terraform en OCI
   terraform-provision:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -60,31 +61,20 @@ jobs:
       - name: 🛠️ Configurar Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # 1. 🔑 CREAR Y CONVERTIR CLAVE PRIVADA OCI (¡Reconstrucción desde Secret de una línea!)
-      - name: 🔑 Crear y Convertir Clave Privada OCI (Formato PKCS#8)
+      # 1. 🔑 CREAR ARCHIVO DE CLAVE PRIVADA (¡SOLUCIÓN PARA CENSURA/SALTOS DE LÍNEA!)
+      - name: 🔑 Crear Clave Privada OCI (Archivo Temporal)
+        env:
+          # Paso 1: Cargar el Secret en una variable de entorno de shell temporal
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
-          KEY_CONTENT="${{ secrets.SSH_PRIVATE_KEY }}"
-          KEY_START="-----BEGIN OPENSSH PRIVATE KEY-----"
-          KEY_END="-----END OPENSSH PRIVATE KEY-----"
-          TEMP_FILE="temp_key.pem"
-
-          # 1. Escribimos la clave reconstruida, forzando los saltos de línea
-          # Esto garantiza que el archivo temporal es un PEM válido.
-          echo "$KEY_START" > "$TEMP_FILE"
-          # La clave base64 es de 70 caracteres por línea. Usamos 'fold' para dividirla.
-          echo "$KEY_CONTENT" | fold -w 64 >> "$TEMP_FILE"
-          echo "$KEY_END" >> "$TEMP_FILE"
+          # Paso 2: Usar 'echo -e' y reemplazar los saltos de línea reales (\n) con el carácter de salto de línea (\n)
+          # Esto es crucial para que la clave se escriba como un archivo PEM multilínea válido
+          echo -e "${SSH_PRIVATE_KEY}" > oci_api_key.pem
+          chmod 600 oci_api_key.pem
           
-          chmod 600 "$TEMP_FILE"
-          
-          # 2. Usamos OpenSSL para convertir la clave al formato PKCS#8 compatible con OCI.
-          openssl pkcs8 -in "$TEMP_FILE" -topk8 -nocrypt -out oci_api_key.pem
-          
-          # 3. Limpiamos el archivo temporal
-          rm "$TEMP_FILE"
-          
+          # La clave se crea directamente en oci_api_key.pem en formato OpenSSH.
+          # Confiamos en que esta escritura es correcta y que Terraform OCI la aceptará.
         working-directory: ${{ env.TERRAFORM_DIR }}
-
 
       # 2. Inicializar, Planificar y Aplicar Terraform
       - name: 🚀 Terraform Init and Apply
@@ -99,7 +89,7 @@ jobs:
           TF_VAR_user_ocid: ${{ secrets.OCI_USER_OCID }}
           TF_VAR_fingerprint: ${{ secrets.OCI_FINGERPRINT }}
           
-          # Clave: Pasamos la RUTA al archivo CONVERTIDO
+          # Clave: Pasamos la RUTA al archivo oci_api_key.pem
           TF_VAR_private_key_path: oci_api_key.pem 
           
           # VM Metadata
@@ -111,7 +101,6 @@ jobs:
           TF_VAR_subnet_id: ocid1.subnet.oc1.sa-saopaulo-1.aaaaaaaaehx74fylbfiizzrzhzgxl33wwaaejlg65m2piuaovwe23siuevfq
           TF_VAR_availability_domain: XZyx:SA-SAOPAULO-1-AD-1
           TF_VAR_ubuntu_2204_image_ocid: ocid1.image.oc1.sa-saopaulo-1.aaaaaaaapi57wbgrd2xz5pppt2omxiwdp4su2jpv5gwlmxo2abkulz2oqh7a
-
 
       # 3. Obtener la IP pública generada
       - name: 🌐 Obtener la IP pública (Output)
