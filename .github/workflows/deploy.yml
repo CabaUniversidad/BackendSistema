@@ -139,14 +139,21 @@ jobs:
         with:
           host: ${{ env.VM_IP }}
           username: ${{ env.VM_SSH_USER }}
-          # ✅ RESTAURADO: Pasamos la clave privada directamente a la acción para evitar el error de "no key".
           key: ${{ secrets.SSH_PRIVATE_KEY }} 
           script: |
-            docker login -u ${{ secrets.DOCKER_USER}} -p ${{ secrets.DOCKER_PASSWORD }}
+            # 1. Iniciar sesión en DockerHub (Usamos SUDO)
+            sudo docker login -u ${{ secrets.DOCKER_USER}} -p ${{ secrets.DOCKER_PASSWORD }}
+            
+            # 2. Reemplazar la IP en el docker-compose.yml
             sed -i 's|<IP_PUBLICA_VM>|${{ env.VM_IP }}|g' docker-compose.yml
-            docker compose pull
-            docker compose up -d
-            docker logout
+            
+            # 3. Pull y Run con Docker Compose (Usamos SUDO)
+            # Nota: 'docker compose' es el comando V2.
+            sudo docker compose pull
+            sudo docker compose up -d
+            
+            # 4. Limpiar credenciales de Docker (Usamos SUDO)
+            sudo docker logout
             
     outputs:
       final_ip: ${{ needs.terraform-provision.outputs.public_ip }}
