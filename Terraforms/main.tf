@@ -19,7 +19,7 @@ provider "oci" {
   fingerprint  = var.fingerprint
   region       = var.region
 
-  # 🚀 ¡CORRECCIÓN FINAL! Usar private_key_path
+  # CORREGIDO: Usar private_key_path
   private_key_path = var.ocid_private_key_path 
 }
 
@@ -30,7 +30,7 @@ data "template_file" "cloud_init_script" {
 
 # Recurso de la instancia de la máquina virtual (Compute Instance)
 resource "oci_core_instance" "Ubuntu_vm" {
-  display_name        = "Ubuntu-docker-vm-04" 
+  display_name        = "Ubuntu-docker-vm-05" 
   
   availability_domain = var.availability_domain
   shape               = "VM.Standard.E2.1.Micro"
@@ -44,8 +44,8 @@ resource "oci_core_instance" "Ubuntu_vm" {
   create_vnic_details {
     subnet_id    = var.subnet_id
     assign_public_ip = true
-    display_name   = "Ubuntu-docker-vm-vnic-04"
-    hostname_label  = "ubuntu-docker-vm-04" 
+    display_name   = "Ubuntu-docker-vm-vnic-05"
+    hostname_label  = "ubuntu-docker-vm-05" 
   }
 
   metadata = {

@@ -6,7 +6,7 @@ on:
       - dev
 
 env:
-  VM_SSH_USER: ubuntu 
+  VM_SSH_USER: ubuntu # Definido como ENV, no Secret.
   TERRAFORM_DIR: Terraforms
   
 jobs:
@@ -64,7 +64,7 @@ jobs:
         shell: bash
         run: |
           echo "${{ secrets.OCID_PRIVATE_KEY }}" > oci_api_key.pem
-          echo "OCI_API_KEY_PATH=$PWD/oci_api_key.pem" >> $GITHUB_ENV # Guarda la RUTA
+          echo "OCI_API_KEY_PATH=$PWD/oci_api_key.pem" >> $GITHUB_ENV 
 
       # 2. Inicializar, Planificar y Aplicar Terraform
       - name: 🚀 Terraform Init and Apply
@@ -74,15 +74,10 @@ jobs:
           terraform apply -auto-approve -no-color
         working-directory: ${{ env.TERRAFORM_DIR }}
         env:
-          # OCI API Secrets
           TF_VAR_tenancy_ocid: ${{ secrets.OCI_TENANCY_OCID }}
           TF_VAR_user_ocid: ${{ secrets.OCI_USER_OCID }}
           TF_VAR_fingerprint: ${{ secrets.OCI_FINGERPRINT }}
-          
-          # ¡Pasa la RUTA al archivo temporal!
-          TF_VAR_ocid_private_key_path: ${{ env.OCI_API_KEY_PATH }}
-          
-          # Variables Estáticas
+          TF_VAR_ocid_private_key_path: ${{ env.OCI_API_KEY_PATH }} # Ruta al archivo temporal
           TF_VAR_compartment_ocid: ${{ secrets.OCI_COMPARTMENT_OCID }}
           TF_VAR_ssh_public_key_content: ${{ secrets.OCI_SSH_PUBLIC_KEY }}
           TF_VAR_region: sa-saopaulo-1
@@ -97,11 +92,10 @@ jobs:
         run: echo "PUBLIC_IP=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
         working-directory: ${{ env.TERRAFORM_DIR }}
 
-      # 4. Configurar SSH Agent para el despliegue
+      # 4. Configurar SSH Agent para el despliegue (Necesario para el paso 'scp' en el Job 3)
       - name: 🔐 Configurar Agente SSH (Clave de la VM)
         uses: webfactory/ssh-agent@v0.8.0
         with:
-          # Clave Privada de la VM para el acceso SSH
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }} 
 
     outputs:
@@ -120,11 +114,12 @@ jobs:
       - name: ⬇️ Checkout del Código
         uses: actions/checkout@v4
 
-      # 🔐 ¡RE-ACTIVAR AGENTE SSH! (Asegura que la clave sea accesible en este Job)
-      - name: 🔐 Configurar Agente SSH (Clave de la VM)
+      # 🔐 PASO EXTRA: Creamos y usamos un agente SSH temporal para el paso SCP (para robustez)
+      - name: 🔑 Configurar Clave Privada para SCP
+        id: scp_key_setup
         uses: webfactory/ssh-agent@v0.8.0
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }} 
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: ⏳ Esperar a que el SSH de la VM esté operativo
         run: |
@@ -132,8 +127,8 @@ jobs:
           sleep 45
 
       - name: 📤 Copiar Docker Compose a la VM
+        # SCP ahora usa el agente SSH temporal configurado en el paso anterior.
         run: |
-          # scp usará la clave del Agente SSH automáticamente.
           scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
               ${{ env.TERRAFORM_DIR }}/docker-compose.yml \
               ${{ env.VM_SSH_USER }}@${{ env.VM_IP }}:/home/${{ env.VM_SSH_USER }}/docker-compose.yml
@@ -144,7 +139,8 @@ jobs:
         with:
           host: ${{ env.VM_IP }}
           username: ${{ env.VM_SSH_USER }}
-          # El parámetro 'key' se omite intencionalmente.
+          # ✅ RESTAURADO: Pasamos la clave privada directamente a la acción para evitar el error de "no key".
+          key: ${{ secrets.SSH_PRIVATE_KEY }} 
           script: |
             docker login -u ${{ secrets.DOCKER_USER}} -p ${{ secrets.DOCKER_PASSWORD }}
             sed -i 's|<IP_PUBLICA_VM>|${{ env.VM_IP }}|g' docker-compose.yml
