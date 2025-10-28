@@ -26,9 +26,9 @@ jobs:
       - name: 🔑 Login a DockerHub
         uses: docker/login-action@v3
         with:
-          # CAMBIO 1: Reemplazar DOCKERHUB_USERNAME por DOCKER_USER
+          # CAMBIO 1: Reemplazar DOCKER_USERpor DOCKER_USER
           username: ${{ secrets.DOCKER_USER }} 
-          # CAMBIO 2: Reemplazar DOCKERHUB_TOKEN por DOCKER_PASSWORD
+          # CAMBIO 2: Reemplazar DOCKER_PASSWORD por DOCKER_PASSWORD
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       # --- Backend Build y Push ---
@@ -37,7 +37,7 @@ jobs:
         with:
           context: ./Backend # Ruta al Dockerfile del Backend
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/backend_fastapi:latest
+          tags: ${{ secrets.DOCKER_USER}}/backend_fastapi:latest
           platforms: linux/amd64
           
       # --- Frontend Build y Push ---
@@ -46,11 +46,11 @@ jobs:
         with:
           context: ./Frontend # Ruta al Dockerfile del Frontend
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/front_web:latest
+          tags: ${{ secrets.DOCKER_USER}}/front_web:latest
           platforms: linux/amd64
           
     outputs:
-      docker_user: ${{ secrets.DOCKERHUB_USERNAME }}
+      docker_user: ${{ secrets.DOCKER_USER}}
       
   # Job 2: Aprovisionamiento de Infraestructura con Terraform en OCI
   terraform-provision:
@@ -129,7 +129,7 @@ jobs:
           key: ${{ secrets.OCI_PRIVATE_KEY }}
           script: |
             # 1. Iniciar sesión en DockerHub
-            docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+            docker login -u ${{ secrets.DOCKER_USER}} -p ${{ secrets.DOCKER_PASSWORD }}
             
             # 2. Reemplazar la IP en el docker-compose.yml (para la URL del Backend/Frontend)
             # Nota: Esto asume que ${VM_IP} está disponible en el scope del script SSH, lo que es correcto con appleboy/ssh-action.
