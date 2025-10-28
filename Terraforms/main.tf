@@ -24,8 +24,8 @@ provider "oci" {
   fingerprint  = var.fingerprint
   region       = var.region
 
-  # ¡CORRECCIÓN CLAVE! Revertimos a 'private_key_path' para que apunte al archivo temporal.
-  private_key_path = var.private_key_path 
+  # ¡CORRECCIÓN CLAVE! Usamos 'private_key_path' para apuntar al archivo temporal creado.
+  private_key_path = var.private_key_path
 }
 
 # 1. Usa data "template_file" para procesar el script cloud_init.sh
@@ -35,8 +35,7 @@ data "template_file" "cloud_init_script" {
 
 # Recurso de la instancia de la máquina virtual (Compute Instance)
 resource "oci_core_instance" "Ubuntu_vm" {
- # Asegúrate de que este nombre sea ÚNICO, si no, tendrás el error 400.
- display_name        = "Ubuntu-docker-vm-04" # Ejemplo de nombre único
+ display_name        = "Ubuntu-docker-vm-04" 
   
  availability_domain = var.availability_domain
  shape               = "VM.Standard.E2.1.Micro"
@@ -51,12 +50,10 @@ resource "oci_core_instance" "Ubuntu_vm" {
   subnet_id    = var.subnet_id
   assign_public_ip = true
   display_name   = "Ubuntu-docker-vm-vnic-04"
-  # ¡Este debe ser el nombre ÚNICO en la subred!
   hostname_label  = "ubuntu-docker-vm-04" 
  }
 
  metadata = {
-  # CORREGIDO: Usamos la variable de contenido, que ahora está declarado en variables.tf
   ssh_authorized_keys = var.ssh_public_key_content
   # Envía el script completo de Bash, ya codificado en base64
   user_data      = base64encode(data.template_file.cloud_init_script.rendered)
