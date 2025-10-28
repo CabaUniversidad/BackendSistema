@@ -49,7 +49,7 @@ jobs:
     outputs:
       docker_user: ${{ secrets.DOCKER_USER}}
       
-  # Job 2: Aprovisionamiento de Infraestructura con Terraform en OCI
+ # Job 2: Aprovisionamiento de Infraestructura con Terraform en OCI
   terraform-provision:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -60,22 +60,31 @@ jobs:
       - name: 🛠️ Configurar Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # 1. 🔑 CREAR Y CONVERTIR CLAVE PRIVADA OCI (¡SOLUCIÓN DEFINITIVA DE FORMATO!)
+      # 1. 🔑 CREAR Y CONVERTIR CLAVE PRIVADA OCI (¡Reconstrucción desde Secret de una línea!)
       - name: 🔑 Crear y Convertir Clave Privada OCI (Formato PKCS#8)
         run: |
-          # 1. Usamos cat y EOF para escribir el secret multilínea con precisión
-          cat << EOF > temp_key.pem
-          ${{ secrets.SSH_PRIVATE_KEY }}
-          EOF
-          chmod 600 temp_key.pem
+          KEY_CONTENT="${{ secrets.SSH_PRIVATE_KEY }}"
+          KEY_START="-----BEGIN OPENSSH PRIVATE KEY-----"
+          KEY_END="-----END OPENSSH PRIVATE KEY-----"
+          TEMP_FILE="temp_key.pem"
+
+          # 1. Escribimos la clave reconstruida, forzando los saltos de línea
+          # Esto garantiza que el archivo temporal es un PEM válido.
+          echo "$KEY_START" > "$TEMP_FILE"
+          # La clave base64 es de 70 caracteres por línea. Usamos 'fold' para dividirla.
+          echo "$KEY_CONTENT" | fold -w 64 >> "$TEMP_FILE"
+          echo "$KEY_END" >> "$TEMP_FILE"
           
-          # 2. Usamos OpenSSL para convertir la clave al formato PKCS#8
-          openssl pkcs8 -in temp_key.pem -topk8 -nocrypt -out oci_api_key.pem
+          chmod 600 "$TEMP_FILE"
+          
+          # 2. Usamos OpenSSL para convertir la clave al formato PKCS#8 compatible con OCI.
+          openssl pkcs8 -in "$TEMP_FILE" -topk8 -nocrypt -out oci_api_key.pem
           
           # 3. Limpiamos el archivo temporal
-          rm temp_key.pem
+          rm "$TEMP_FILE"
           
         working-directory: ${{ env.TERRAFORM_DIR }}
+
 
       # 2. Inicializar, Planificar y Aplicar Terraform
       - name: 🚀 Terraform Init and Apply
@@ -102,6 +111,7 @@ jobs:
           TF_VAR_subnet_id: ocid1.subnet.oc1.sa-saopaulo-1.aaaaaaaaehx74fylbfiizzrzhzgxl33wwaaejlg65m2piuaovwe23siuevfq
           TF_VAR_availability_domain: XZyx:SA-SAOPAULO-1-AD-1
           TF_VAR_ubuntu_2204_image_ocid: ocid1.image.oc1.sa-saopaulo-1.aaaaaaaapi57wbgrd2xz5pppt2omxiwdp4su2jpv5gwlmxo2abkulz2oqh7a
+
 
       # 3. Obtener la IP pública generada
       - name: 🌐 Obtener la IP pública (Output)
