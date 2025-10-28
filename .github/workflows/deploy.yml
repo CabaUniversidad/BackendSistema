@@ -80,15 +80,13 @@ jobs:
           TF_VAR_user_ocid: ${{ secrets.OCI_USER_OCID }}
           TF_VAR_fingerprint: ${{ secrets.OCI_FINGERPRINT }}
           
-          # ¡CAMBIO CLAVE! Usamos TF_VAR_private_key con el contenido del Secret.
-          # Usamos la sustitución de bash para reemplazar los saltos de línea (si existen)
-          # Esto puede ser susceptible a la censura (***), pero es la única opción sin archivo.
-          TF_VAR_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # 🔑 ¡CLAVE OCI RENOMBRADA!
+          TF_VAR_ocid_private_key: ${{ secrets.OCID_PRIVATE_KEY }}
           
           # Variables Estáticas
           TF_VAR_compartment_ocid: ${{ secrets.OCI_COMPARTMENT_OCID }}
           TF_VAR_ssh_public_key_content: ${{ secrets.OCI_SSH_PUBLIC_KEY }}
-          TF_VAR_region: sa-saopaulo-1
+          TF_VAR_region: sa-saopaulo-1 
           TF_VAR_subnet_id: ocid1.subnet.oc1.sa-saopaulo-1.aaaaaaaaehx74fylbfiizzrzhzgxl33wwaaejlg65m2piuaovwe23siuevfq
           TF_VAR_availability_domain: XZyx:SA-SAOPAULO-1-AD-1
           TF_VAR_ubuntu_2204_image_ocid: ocid1.image.oc1.sa-saopaulo-1.aaaaaaaapi57wbgrd2xz5pppt2omxiwdp4su2jpv5gwlmxo2abkulz2oqh7a
@@ -104,7 +102,7 @@ jobs:
       - name: 🔐 Configurar Agente SSH
         uses: webfactory/ssh-agent@v0.8.0
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }} 
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
     outputs:
       public_ip: ${{ steps.get_ip.outputs.PUBLIC_IP }}
@@ -130,17 +128,17 @@ jobs:
 
       - name: 📤 Copiar Docker Compose a la VM
         run: |
+          # scp usará automáticamente la clave SSH inyectada por el Agente SSH.
           scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
               ${{ env.TERRAFORM_DIR }}/docker-compose.yml \
               ${{ env.VM_SSH_USER }}@${{ env.VM_IP }}:/home/${{ env.VM_SSH_USER }}/docker-compose.yml
-              
+
 
       - name: 🐳 Ejecutar Despliegue Docker en la VM
         uses: appleboy/ssh-action@master
         with:
           host: ${{ env.VM_IP }}
-          username: ${{ env.VM_SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          username: ${{ env.VM_SSH_USER }} 
           script: |
             # 1. Iniciar sesión en DockerHub
             docker login -u ${{ secrets.DOCKER_USER}} -p ${{ secrets.DOCKER_PASSWORD }}

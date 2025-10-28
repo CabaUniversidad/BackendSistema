@@ -13,9 +13,8 @@ variable "fingerprint" {
     type        = string
 }
 
-variable "private_key" {
-    # ¡CAMBIO CLAVE! Ahora es el contenido (string), no la ruta.
-    description = "El contenido RAW de la clave privada API" 
+variable "ocid_private_key" { 
+    description = "El contenido RAW de la clave privada API para OCI (no SSH)." 
     type        = string
 }
 
