@@ -6,8 +6,8 @@ import time
 import random
 from faker import Faker
 
-#API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
-API_BASE_URL = os.getenv("API_BASE_URL", "http://64.181.166.239")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://backend:8000")
+#API_BASE_URL = os.getenv("API_BASE_URL", "http://64.181.166.239")
 
 fake = Faker("es_ES")
 
