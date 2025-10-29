@@ -178,17 +178,9 @@ jobs:
           username: ${{ env.VM_SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }} 
           script: |
-            # CRÍTICO 1: Reemplaza la variable DOCKER_USER por su valor REAL dentro del compose
-            sed -i 's|${{ secrets.DOCKER_USER}}|${{ env.DOCKER_USER}}|g' docker-compose.yml
-            
-            # CRÍTICO 2: Reemplaza el marcador de IP (<IP_PUBLICA_VM>) por la IP real
-            sed -i 's|<IP_PUBLICA_VM>|${{ env.VM_IP }}|g' docker-compose.yml
-            
-            # 1. Login
-            sudo docker login -u ${{ secrets.DOCKER_USER}} -p ${{ secrets.DOCKER_PASSWORD }}
-            
             # 2. Pull, Up y Logout
             sudo docker compose pull
+            # Ejecutamos docker compose con la variable DOCKER_USER exportada en el entorno
             sudo docker compose up -d
             sudo docker logout
             
