@@ -1,29 +1,33 @@
 version: '3.8'
 
 services:
-  # -------------------- FRONTEND --------------------
+  # -------------------- FRONTEND (Flet Web) --------------------
   frontend:
-    # CRÍTICO: Usar la variable de entorno que se pasa al Job 3 (DOCKER_USER)
-    # y la etiqueta exacta que se construyó: front_web:latest
-    image: ${{ secrets.DOCKER_USER}}/front_web:latest 
+    # 🎯 CAMBIO CRÍTICO 1: Usar la variable de Shell $DOCKER_USER.
+    # Esta variable será definida y exportada en el script de despliegue.
+    image: $DOCKER_USER/front_web:latest 
     container_name: frontend
     restart: always
+    # 🎯 CAMBIO CRÍTICO 2: Mapear el puerto público 80 al puerto interno 8550
+    # que tu Dockerfile de Frontend está exponiendo.
     ports:
-      - "80:80"
+      - "80:8550"
     depends_on:
       - backend
 
-  # -------------------- BACKEND --------------------
+  # -------------------- BACKEND (FastAPI) --------------------
   backend:
-    # CRÍTICO: Usar la variable de entorno y la etiqueta: backend_fastapi:latest
-    image: ${{ secrets.DOCKER_USER}}/backend_fastapi:latest
+    # 🎯 CAMBIO CRÍTICO 1: Usar la variable de Shell $DOCKER_USER.
+    image: $DOCKER_USER/backend_fastapi:latest
     container_name: backend
     restart: always
     environment:
-      # CRÍTICO: Se debe reemplazar la IP de la VM en el deploy.yml
-      # Asegura que el backend sepa dónde está el frontend (si es necesario)
+      # 🎯 CONEXIÓN FRONTEND-BACKEND: Usar el nombre del servicio 'backend' para la comunicación interna.
+      # Para el backend, la URL del frontend es la IP pública, si la necesita.
       - FRONTEND_URL=http://<IP_PUBLICA_VM> 
     ports:
       - "8000:8000"
-      # Elimina el puerto 80 del backend. Solo el frontend debe estar en 80.
-      #- "80:80"
+      
+networks:
+  default:
+    # Usa la red por defecto creada por Docker Compose para que los servicios se vean entre sí.

@@ -6,11 +6,10 @@ on:
       - dev
 
 env:
-  VM_SSH_USER: ubuntu 
+  VM_SSH_USER: ubuntu
   TERRAFORM_DIR: Terraforms
-  
+
 jobs:
-  
   # Job 1: Build y Empaquetado de la Solución en Docker
   build-and-push:
     runs-on: ubuntu-latest
@@ -25,7 +24,7 @@ jobs:
       - name: 🔑 Login a DockerHub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USER }} 
+          username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: 📦 Construir y Publicar Backend
@@ -35,7 +34,7 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_USER}}/backend_fastapi:latest
           platforms: linux/amd64
-          
+
       - name: 📦 Construir y Publicar Frontend
         uses: docker/build-push-action@v5
         with:
@@ -43,10 +42,10 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_USER}}/front_web:latest
           platforms: linux/amd64
-          
+
     outputs:
       docker_user: ${{ secrets.DOCKER_USER}}
-      
+
   # Job 2: Aprovisionamiento de Infraestructura con Terraform en OCI
   terraform-provision:
     needs: build-and-push
@@ -64,7 +63,7 @@ jobs:
         shell: bash
         run: |
           echo "${{ secrets.OCID_PRIVATE_KEY }}" > oci_api_key.pem
-          echo "OCI_API_KEY_PATH=$PWD/oci_api_key.pem" >> $GITHUB_ENV 
+          echo "OCI_API_KEY_PATH=$PWD/oci_api_key.pem" >> $GITHUB_ENV
 
       # 2. Inicializar, Planificar y Aplicar Terraform
       - name: 🚀 Terraform Init and Apply
@@ -84,7 +83,6 @@ jobs:
           TF_VAR_subnet_id: ocid1.subnet.oc1.sa-saopaulo-1.aaaaaaaaehx74fylbfiizzrzhzgxl33wwaaejlg65m2piuaovwe23siuevfq
           TF_VAR_availability_domain: XZyx:SA-SAOPAULO-1-AD-1
           TF_VAR_ubuntu_2204_image_ocid: ocid1.image.oc1.sa-saopaulo-1.aaaaaaaapi57wbgrd2xz5pppt2omxiwdp4su2jpv5gwlmxo2abkulz2oqh7a
-          
 
       # 3. Obtener la IP pública generada
       - name: 🌐 Obtener la IP pública (Output)
@@ -96,7 +94,7 @@ jobs:
       - name: 🔐 Configurar Agente SSH (Clave de la VM)
         uses: webfactory/ssh-agent@v0.8.0
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }} 
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
     outputs:
       public_ip: ${{ steps.get_ip.outputs.PUBLIC_IP }}
@@ -109,7 +107,7 @@ jobs:
     env:
       VM_IP: ${{ needs.terraform-provision.outputs.public_ip }}
       DOCKER_USER: ${{ needs.terraform-provision.outputs.docker_user }}
-      
+
     steps:
       - name: ⬇️ Checkout del Código
         uses: actions/checkout@v4
@@ -142,7 +140,6 @@ jobs:
           scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
               ${{ env.TERRAFORM_DIR }}/setup_docker.sh \
               ${{ env.VM_SSH_USER }}@${{ env.VM_IP }}:/home/${{ env.VM_SSH_USER }}/setup_docker.sh
-              
 
       # 🆕 PASO 2: Ejecutar script de instalación de Docker en la VM
       - name: 🐳 Instalar Docker por SSH
@@ -168,7 +165,6 @@ jobs:
           scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
               ${{ env.TERRAFORM_DIR }}/docker-compose.yml \
               ${{ env.VM_SSH_USER }}@${{ env.VM_IP }}:/home/${{ env.VM_SSH_USER }}/docker-compose.yml
-              
 
       # ⬇️ PASO 4: Ejecutar Despliegue Docker
       - name: 🐳 Ejecutar Despliegue Docker en la VM
@@ -176,36 +172,45 @@ jobs:
         with:
           host: ${{ env.VM_IP }}
           username: ${{ env.VM_SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }} 
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # 2. Pull, Up y Logout
+            # CRÍTICO: Exportar la variable DOCKER_USER para que docker-compose la lea ($DOCKER_USER).
+            export DOCKER_USER="${{ env.DOCKER_USER }}"
+
+            # Reemplaza el marcador de IP (<IP_PUBLICA_VM>) por la IP real en docker-compose.yml
+            sed -i 's|<IP_PUBLICA_VM>|${{ env.VM_IP }}|g' docker-compose.yml
+
+            # 1. Login
+            sudo docker login -u ${{ secrets.DOCKER_USER}} -p ${{ secrets.DOCKER_PASSWORD }}
+
+            # 2. Pull (ahora encontrará la imagen gracias al 'export DOCKER_USER')
             sudo docker compose pull
-            # Ejecutamos docker compose con la variable DOCKER_USER exportada en el entorno
+
+            # 3. Up y Logout
             sudo docker compose up -d
             sudo docker logout
-            
+
     outputs:
       final_ip: ${{ needs.terraform-provision.outputs.public_ip }}
 
   # Job 4: Notificación por Correo (Fallo o Éxito)
-# ... (rest of the job)
-
+  # ... (rest of the job)
 
   # Job 4: Notificación por Correo (Fallo o Éxito)
   notify-result:
     needs: [deploy-to-vm]
     if: always()
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: 📧 Enviar Notificación (Éxito o Fallo)
         uses: dawidd6/action-send-mail@v3
         with:
-          subject: | 
+          subject: |
             ${{ contains(needs.*.result, 'failure') && '❌ FALLO' || '✅ ÉXITO' }} Despliegue OCI | IP: ${{ needs.deploy-to-vm.outputs.final_ip }}
           to: ${{ secrets.EMAIL_RECIPIENT }}
           from: ${{ secrets.MAIL_USERNAME }}
-          server_address: smtp.gmail.com 
+          server_address: smtp.gmail.com
           server_port: 465
           secure: true
           username: ${{ secrets.MAIL_USERNAME }}
