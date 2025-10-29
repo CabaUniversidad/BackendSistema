@@ -2,17 +2,25 @@
 
 version: '3.8'
 services:
-  backend:
-    # ... (configuración del backend)
-    ports:
-      - "8080:8080" # El backend corre internamente en el puerto 8080
-
+  # -------------------- FRONTEND --------------------
   frontend:
-    # ... (configuración del frontend)
+    # 🛑 ESTA LÍNEA ES CRÍTICA: Debe apuntar a la imagen que subiste.
+    image: tu_usuario_docker/front_web:latest 
+    container_name: frontend
+    restart: always
+    ports:
+      - "80:80"
     depends_on:
       - backend
+  # -------------------- BACKEND --------------------
+  backend:
+    # 🛑 ESTA LÍNEA ES CRÍTICA: Debe apuntar a la imagen que subiste.
+    image: tu_usuario_docker/backend_api:latest
+    container_name: backend
+    restart: always
     environment:
-      # ESTA LÍNEA es la clave para inyectar la IP. Usamos un PLACEHOLDER.
-      - API_BASE_URL=http://<IP_PUBLICA_VM>:8080 
+      # Ejemplo de variable que el backend podría necesitar
+      - FRONTEND_URL=http://<IP_PUBLICA_VM> 
     ports:
+      - "8000:8000"
       - "80:80"
