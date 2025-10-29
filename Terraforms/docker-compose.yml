@@ -1,26 +1,29 @@
-# Fragmento clave de Terraforms/docker-compose.yml
-
 version: '3.8'
+
 services:
   # -------------------- FRONTEND --------------------
   frontend:
-    # 🛑 ESTA LÍNEA ES CRÍTICA: Debe apuntar a la imagen que subiste.
-    image: tu_usuario_docker/front_web:latest 
+    # CRÍTICO: Usar la variable de entorno que se pasa al Job 3 (DOCKER_USER)
+    # y la etiqueta exacta que se construyó: front_web:latest
+    image: ${{ secrets.DOCKER_USER}}/front_web:latest 
     container_name: frontend
     restart: always
     ports:
       - "80:80"
     depends_on:
       - backend
+
   # -------------------- BACKEND --------------------
   backend:
-    # 🛑 ESTA LÍNEA ES CRÍTICA: Debe apuntar a la imagen que subiste.
-    image: tu_usuario_docker/backend_api:latest
+    # CRÍTICO: Usar la variable de entorno y la etiqueta: backend_fastapi:latest
+    image: ${{ secrets.DOCKER_USER}}/backend_fastapi:latest
     container_name: backend
     restart: always
     environment:
-      # Ejemplo de variable que el backend podría necesitar
+      # CRÍTICO: Se debe reemplazar la IP de la VM en el deploy.yml
+      # Asegura que el backend sepa dónde está el frontend (si es necesario)
       - FRONTEND_URL=http://<IP_PUBLICA_VM> 
     ports:
       - "8000:8000"
-      - "80:80"
+      # Elimina el puerto 80 del backend. Solo el frontend debe estar en 80.
+      #- "80:80"
