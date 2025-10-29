@@ -3,9 +3,9 @@ version: '3.8'
 services:
   # -------------------- FRONTEND (Flet Web) --------------------
   frontend:
-    # 🎯 CAMBIO CRÍTICO 1: Usar la variable de Shell $DOCKER_USER.
+    # 🎯 CAMBIO CRÍTICO 1: Usar la variable de Shell facc1.
     # Esta variable será definida y exportada en el script de despliegue.
-    image: $DOCKER_USER/front_web:latest 
+    image: facc1/front_web:latest 
     container_name: frontend
     restart: always
     # 🎯 CAMBIO CRÍTICO 2: Mapear el puerto público 80 al puerto interno 8550
@@ -17,8 +17,8 @@ services:
 
   # -------------------- BACKEND (FastAPI) --------------------
   backend:
-    # 🎯 CAMBIO CRÍTICO 1: Usar la variable de Shell $DOCKER_USER.
-    image: $DOCKER_USER/backend_fastapi:latest
+    # 🎯 CAMBIO CRÍTICO 1: Usar la variable de Shell facc1.
+    image: facc1/backend_fastapi:latest
     container_name: backend
     restart: always
     environment:
