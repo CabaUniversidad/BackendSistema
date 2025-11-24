@@ -1,113 +1,67 @@
-from fastapi import FastAPI,status, Path, Query, APIRouter,HTTPException
-from fastapi.responses import PlainTextResponse,JSONResponse
-from src.model.EmpleadoEditarRequest import EmpleadoEditarRequest
-from src.model.Proveedor import Proveedor
-from src.model.LoginRequest import LoginRequest
-from src.services.supabase_service import get_proveedores_service,get_proveedor_service,get_producto_proveedor_service,get_usuarios_service,editar_empleado_service,get_categorias_service,get_productos_por_categoria_service,get_productos_service,get_rols_service,get_estado_empleado_service,get_producto_por_codbarras_service,add_proveedor_service,update_proveedor_service,login_empleado_service
+# src/main.py
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
+from datetime import datetime
+from src.model.usuario_modelo import Usuario
+from src.services.usuario_servicio import crear_usuario, obtener_usuarios, obtener_usuario_por_id, actualizar_usuario, eliminar_usuario
 
 app = FastAPI()
+origins = [
+    "http://localhost:8550", # Para pruebas locales de Flet
+    "http://64.181.166.239", # El origen de tu Flet desplegado (si usa el puerto 80)
+    "http://64.181.166.239:8550", # Si Flet se accede por el puerto 8550
+    # Opcional, pero no seguro en Prod: "*"
+]
 
-
-
-@app.get("/",tags=['Home'])
-def home():
-    return PlainTextResponse(content="hola mundo",status_code=200) 
-#---------categoria--------------------
-@app.get("/categorias",tags=['Categoria'])
-def get_categorias():
-    return JSONResponse(content=get_categorias_service())
-
-#---------producto--------------------
-@app.get("/productos/by_categoria", tags=["Producto"])
-def get_productos_por_categoria(id: int = Query(...)) -> JSONResponse:
-    productos = get_productos_por_categoria_service(id)
-    if productos:
-        return JSONResponse(content=productos, status_code=200)
-    return JSONResponse(content={"message": "No se encontraron productos para esa categoría."}, status_code=404)
-@app.get("/Productos",tags=['Producto'])
-def get_Productos():
-    return JSONResponse(content=get_productos_service())
-
-@app.get("/productos/by_codbarras", tags=["Producto"])
-def get_producto_por_codbarras(codbarras: int = Query(...)) -> JSONResponse:
-    producto = get_producto_por_codbarras_service(codbarras)
-    if producto:
-        return JSONResponse(content=producto, status_code=200)
-    return JSONResponse(content={"message": "Producto no encontrado."}, status_code=404)
-
-
-
-
-
-
-
-#-----------proveedor-------------
-@app.get("/proveedores",tags=['Proveedor'])
-def get_proveedors():
-    return JSONResponse(content=get_proveedores_service())
-
-@app.get("/proveedores/by_id", tags=["Proveedor"])  # ruta retorna por id
-def get_proveedor(id: str = Query(max_length=7,min_length=7)) ->  dict:
-    if get_proveedor_service(id):
-        return JSONResponse(content=get_proveedor_service(id), status_code=200)
-    return JSONResponse(content={}, status_code=404)
-
-@app.get("/proveedores/producto/by_idpv", tags=["Proveedor"])
-def get_productos_proveedor(id: str = Query(..., max_length=7, min_length=7)) -> JSONResponse:
-    productos = get_producto_proveedor_service(id)
-    if productos:
-        return JSONResponse(content=productos, status_code=200)
-    return JSONResponse(content={"message": "No se encontraron productos para ese proveedor."}, status_code=404)
-
-@app.post("/proveedores", tags=["Proveedor"])
-def crear_proveedor(proveedor: Proveedor):
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],  # Permite GET, POST, PUT, DELETE, etc.
+    allow_headers=["*"],
+)
+@app.post("/usuarios")
+def crear_usuario_nuevo(usuario: Usuario):
+    usuario.fecha_registro = datetime.now()
     try:
-        return JSONResponse(content=add_proveedor_service(proveedor.dict()))
-    except Exception as e:
+        return crear_usuario(usuario)
+    except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.put("/proveedores/{idproveedor}", tags=["Proveedor"])
-def actualizar_proveedor(idproveedor: str, proveedor: Proveedor):
-    try:
-        return JSONResponse(content=update_proveedor_service(idproveedor, proveedor.dict()))
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@app.get("/usuarios_get")
+def listar_usuarios():
+    return obtener_usuarios()
 
+@app.get("/usuarios/{user_id}")
+def obtener_usuario(user_id: int):
+    usuario = obtener_usuario_por_id(user_id)
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return usuario
 
-#----------login-------------------
-@app.post("/login", tags=["Empleado"])
-def login_empleado(request: LoginRequest):
-    empleado = login_empleado_service(request.usuario, request.password)
-    if empleado:
-        return JSONResponse(content={
-            "success": empleado[0]["es_admin"],
-            "data": empleado[0]
-        }, status_code=200)
-    raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+@app.put("/usuarios/{user_id}")
+def actualizar_usuario_endpoint(user_id: int, usuario: Usuario):
+    usuario_actualizado = actualizar_usuario(user_id, usuario)
+    if not usuario_actualizado:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return usuario_actualizado
 
+@app.delete("/usuarios/{user_id}")
+def eliminar_usuario_endpoint(user_id: int):
+    exito = eliminar_usuario(user_id)
+    if not exito:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return {"mensaje": "Usuario eliminado correctamente"} 
+if __name__ == "__main__":
+    import uvicorn
+    import os
 
-
-#------------empleado-------------
-@app.get("/empleados", tags=["Empleado"]) # retorna todos lo productos de un proveedor segun su ipPROVEEDOR
-def get_usuarios() -> JSONResponse:
-    usuario = get_usuarios_service()
-    if usuario:
-        return JSONResponse(content=usuario, status_code=200)
-    return JSONResponse(content={"message": "No se encontraron usuarios."}, status_code=404)
-@app.get("/empleado/rol",tags=['Empleado'])
-def get_rols():
-    return JSONResponse(content=get_rols_service())
-@app.get("/empleado/estado",tags=['Empleado'])
-def get_estado_empleado():
-    return JSONResponse(content=get_estado_empleado_service())
-@app.put("/empleados/{cod_empleado}", tags=["Empleado"])
-def editar_empleado(cod_empleado: str, request: EmpleadoEditarRequest):
-    try:
-        data = request.dict()
-        data["CodEmpleado"] = cod_empleado
-        result = editar_empleado_service(data)
-        return JSONResponse(content=result, status_code=200)
-    except Exception as e:
-        print("ERROR al editar empleado:", str(e))
-        raise HTTPException(status_code=400, detail=str(e))
+    # Escuchar en 0.0.0.0 para que sea accesible desde otros contenedores
+    uvicorn.run(
+        "src.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=os.getenv("DEV_MODE") == "1"
+    )
