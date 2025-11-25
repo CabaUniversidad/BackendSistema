@@ -6,7 +6,9 @@ on:
       - main
 
 jobs:
+  #testear:
   construir-y-publicar:
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Descargar repositorio
@@ -25,6 +27,7 @@ jobs:
         run: docker push ${{ secrets.DOCKER_USER }}/backend_fastapi:latest
 
   desplegar:
+    if: false
     needs: construir-y-publicar
     runs-on: ubuntu-latest
     steps:
@@ -95,6 +98,7 @@ jobs:
               ${{ secrets.DOCKER_USER }}
 
   notificar-al-finalizar: # Nombre del trabajo cambiado a español y dependencia ajustada
+    if: false
     needs: [construir-y-publicar, desplegar] # ¡CORRECCIÓN CLAVE! Ahora espera a que 'desplegar' termine
     runs-on: ubuntu-latest
     steps:
