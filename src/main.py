@@ -46,10 +46,14 @@ def get_producto_por_codbarras(codbarras: int = Query(...)) -> JSONResponse:
 def get_proveedors():
     return JSONResponse(content=get_proveedores_service())
 
-@app.get("/proveedores/by_id", tags=["Proveedor"])  # ruta retorna por id
-def get_proveedor(id: str = Query(max_length=7,min_length=7)) ->  dict:
-    if get_proveedor_service(id):
-        return JSONResponse(content=get_proveedor_service(id), status_code=200)
+@app.get("/proveedores/by_id", tags=["Proveedor"]) 
+def get_proveedor(id: str = Query(max_length=7,min_length=7)) -> dict:
+    # 1. Llamar al servicio UNA SOLA VEZ y almacenar el resultado
+    proveedor = get_proveedor_service(id)
+    
+    # 2. Usar la variable local para la verificación y la respuesta
+    if proveedor:
+        return JSONResponse(content=proveedor, status_code=200)
     return JSONResponse(content={}, status_code=404)
 
 @app.get("/proveedores/producto/by_idpv", tags=["Proveedor"])
@@ -73,6 +77,9 @@ def actualizar_proveedor(idproveedor: str, proveedor: Proveedor):
         return JSONResponse(content=update_proveedor_service(idproveedor, proveedor.dict()))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+
 
 
 #----------login-------------------
@@ -116,3 +123,4 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run("src.main:app", host="127.0.0.1", port=8000, reload=True)
 #python -m src.main
+#pytest -s test/unit/unit_categoria.py
